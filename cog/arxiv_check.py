@@ -1,14 +1,13 @@
 import configparser
-import datetime
+from datetime import datetime
 import time
 from dataclasses import dataclass
 from typing import List, Tuple
 
-
 import arxiv
 import discord
 import pytz
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.ext.commands import Bot
 from googletrans import Translator
 
@@ -43,8 +42,16 @@ class ArxivCheckCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.word_list: List[dict] = []
+        # self.periodically.start()
         # self.bot = Bot(command_prefix='!')
         # self.bot.load_extension('cog.sort_riddle')
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        print('login')
+        self.periodically.start()
+        await self.bot.change_presence(activity=discord.Game(name='/help'))
+
 
     @commands.command()
     async def neko(self, ctx):
@@ -72,6 +79,15 @@ class ArxivCheckCog(commands.Cog):
         # TODO:
         pass
 
+    # 定期実行する関数
+    @tasks.loop(minutes=1)
+    async def periodically(self):
+        # https://discordpy.readthedocs.io/ja/latest/ext/tasks/index.html
+        now = datetime.now().strftime("%H:%M")
+        if now == '18:00':
+        # print(now)
+            channel  = self.bot.get_channel(761580345090113569)
+            await channel.send(now + '時間だよ')
 
 
 
