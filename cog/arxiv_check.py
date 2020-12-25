@@ -20,11 +20,11 @@ from googletrans import Translator
 # 検索は１日１回．18:00 JSTにおこなう
 
 # 実装するコマンド
-#  - add
-#  - delete
-#  - show
-#  - now
-#  - help
+#  - [ ] add
+#  - [ ] delete
+#  - [ ] show
+#  - [ ] now
+#  - [ ] help
 
 
 # @bot.command()
@@ -38,7 +38,7 @@ class Paper:
     j_abst: str
     keywords: Tuple[str]
 
-class ArxivCheckCog(commands.Cog):
+class ArxivCheckCog(commands.Cog, name="checker"):
     def __init__(self, bot):
         self.bot = bot
         self.word_list: List[dict] = []
@@ -55,10 +55,15 @@ class ArxivCheckCog(commands.Cog):
 
     @commands.command()
     async def neko(self, ctx):
-        await ctx.send('にゃう')
+        """にゃうと返す"""
+        await ctx.send(f'{ctx.author.mention} にゃう')
 
     @commands.command()
     async def add(self, ctx, *args):
+        """
+        検索したい単語を追加
+        　追加したい単語と同名のロールを作成し，メンションによって通知が送信されるようにします
+        """
         _guild = ctx.guild
 
         def role(x):
@@ -76,13 +81,21 @@ class ArxivCheckCog(commands.Cog):
 
     @commands.command()
     async def delete(self, ctx, *args):
+        """
+        検索対象の単語を消す
+        　一致しなかったらそのまま
+        """
         # TODO:
         pass
 
     @commands.command()
     async def show(self, ctx):
+        """検索対象の単語一覧を表示"""
         # TODO:
-        pass
+        for item in self.word_list:
+            await ctx.send(item)
+
+
 
     # 定期実行する関数
     @tasks.loop(minutes=1)
