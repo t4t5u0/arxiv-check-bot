@@ -79,6 +79,11 @@ class ArxivCheckCog(commands.Cog):
         # TODO:
         pass
 
+    @commands.command()
+    async def show(self, ctx):
+        # TODO:
+        pass
+
     # 定期実行する関数
     @tasks.loop(minutes=1)
     async def periodically(self):
