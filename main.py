@@ -1,79 +1,19 @@
 import configparser
-import datetime
-import time
-from dataclasses import dataclass
-from typing import List, Tuple
 
-
-import arxiv
 import discord
-import pytz
-from discord.ext import commands
 from discord.ext.commands import Bot
-from googletrans import Translator
 
-# 検索するべき単語の追加削除
-# 単語リストが更新されたとき，それに付随するロールを作成する
-# ある論文に単語リスト中のキーワードが含まれていたら，まとめて，メンションする
-# 検索したい単語について，ロールを追加．自動的にメンションする
-# アブストラクトを日本語訳
+config = configparser.ConfigParser()
+config.read('./config.ini')
+TOKEN = config['TOKEN']['token']
 
-# 検索は１日１回．18:00 JSTにおこなう
+bot = Bot(command_prefix='/')
+bot.load_extension('cog.arxiv_check')
 
-# 実装するコマンド
-#  - add
-#  - delete
-#  - show
-#  - now
-#  - help
-
-TOKEN = 'NzkxOTE5MjA3NzM3NzIwODYy.X-WKPA.leTp2HKvhJjaJf02-6Vt9jn3wwo'
-bot = Bot(command_prefix='!')
-bot.load_extension('cog.sort_riddle')
+@bot.command()
+async def on_ready():
+    await bot.change_presence(activity=discord.Game(name='!help'))
 
 
-# @bot.command()
-# async def
-
-class ArxivCheckCog(commands.cog):
-    def __init__(self, bot):
-        self.bot = bot
-        self.word_list: List[dict] = []
-        # self.bot = Bot(command_prefix='!')
-        # self.bot.load_extension('cog.sort_riddle')
-
-    @commands.Cog.listener()
-    async def on_ready():
-        await bot.change_presence(activity=discord.Game(name='!help'))
-
-    @commands.command()
-    async def add(self, ctx, *args):
-        _guild = ctx.guild
-
-        def role(x):
-            result = discord.utils.get(_guild.roles, name=x)
-            if result is None:
-                # create role
-                _guild.create_role(name=x)
-            return result 
-
-
-        arg_dict = {x: role(x) for x in args if role(x) is not None}
-        self.word_list.append(arg_dict)
-        await ctx.send("検索ワードを追加したました[" 
-                + ' '.join(arg for arg in arg_dict.keys) + ']')
-
-    @commands.command()
-    async def delete(self, ctx, *args):
-        # TODO:
-        pass
-
-
-
-@dataclass
-class Paper:
-    link: str
-    title: str
-    abst: str
-    j_abst: str
-    keywords: Tuple[str]
+if __name__ == "__main__":
+    bot.run(TOKEN)
