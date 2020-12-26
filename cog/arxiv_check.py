@@ -2,7 +2,7 @@ import configparser
 from datetime import datetime
 import time
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import Dict, List, Set, Tuple
 
 import arxiv
 import discord
@@ -24,7 +24,7 @@ from googletrans import Translator
 #  - [ ] delete
 #  - [ ] show
 #  - [ ] now
-#  - [ ] help
+#  - [x] help
 
 
 # @bot.command()
@@ -36,9 +36,15 @@ class Paper:
     title: str
     abst: str
     j_abst: str
-    keywords: Tuple[str]
+    keywords: Set[str]
 
+    def __add__(self, other):
+        if self.link == other.link:
+            self.keywords += other.keywords
+    
 class ArxivCheckCog(commands.Cog, name="checker"):
+    # guild id と　channel id  を保持しないといけない
+    # ワードごとに設定できるのが理想
     def __init__(self, bot):
         self.bot = bot
         self.word_list: List[dict] = []
@@ -65,19 +71,27 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         　追加したい単語と同名のロールを作成し，メンションによって通知が送信されるようにします
         """
         _guild = ctx.guild
+        await ctx.send(f'{_guild.name}, {_guild.id}')
 
-        def role(x):
-            result = discord.utils.get(_guild.roles, name=x)
-            if result is None:
-                # create role
-                _guild.create_role(name=x)
-            return result 
+        # async def role(self, x, guild):
+        # result = discord.utils.get(_guild.roles, name=x)
+        # if result is None:
+        #     # create role
+        #     await _guild.create_role(name=x)
+        
+        arg_dict = []
+        for arg in args:
+            role = await _guild.create_role(name=arg, mentionable=True)
+            await ctx.send(role.name)
+            arg_dict.append(
+                {"role_name":role.name, "role_id": role.id}
+            )
 
-
-        arg_dict = {x: role(x) for x in args if role(x) is not None}
+        # arg_dict = [{"key":x, "role": r} for x in args if (r := self.role(x, _guild)) is not None]
         self.word_list.append(arg_dict)
+        await ctx.send(arg_dict)
         await ctx.send("検索ワードを追加しました[" 
-                + ' '.join(arg for arg in arg_dict.keys) + ']')
+                + ' ,'.join(arg["role_name"] for arg in arg_dict) + ']')
 
     @commands.command()
     async def delete(self, ctx, *args):
@@ -92,8 +106,8 @@ class ArxivCheckCog(commands.Cog, name="checker"):
     async def show(self, ctx):
         """検索対象の単語一覧を表示"""
         # TODO:
-        for item in self.word_list:
-            await ctx.send(item)
+        for item in self.word_list[0]:
+            await ctx.send(item["key"])
 
 
 
@@ -107,6 +121,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
             channel  = self.bot.get_channel(761580345090113569)
             await channel.send(now + '時間だよ')
 
+    # def get_paper(self):
 
 
 
