@@ -1,7 +1,7 @@
 import csv
 import json
 import configparser
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 from dataclasses import dataclass
 from typing import Dict, List, Set, Tuple
@@ -31,6 +31,7 @@ from googletrans import Translator
 # @bot.command()
 # async def
 
+
 @dataclass
 class Paper:
     link: str
@@ -53,6 +54,7 @@ class Paper:
         # ロールのメンション処理を追加する
         # role.mention
 
+
 class ArxivCheckCog(commands.Cog, name="checker"):
     # guild id と　channel id  を保持しないといけない
     # ワードごとに設定できるのが理想
@@ -62,11 +64,11 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         self.guild_id_list = []
         self.data = []
 
-        with open('./data/guild_id_list.csv') as f:
-            self.guild_id_list = [int(y) for x in csv.reader(f) for y in x]
+        # with open('./data/guild_id_list.csv') as f:
+        #     self.guild_id_list = [int(y) for x in csv.reader(f) for y in x]
 
-        with open('./data/sort_riddle_data.json') as f:
-            self.data = json.load(f)
+        # with open('./data/guild_info.json') as f:
+        #     self.data = json.load(f)
         # self.periodically.start()
         # self.bot = Bot(command_prefix='!')
         # self.bot.load_extension('cog.sort_riddle')
@@ -86,7 +88,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
     async def add(self, ctx, *args):
         """
         検索したい単語を追加
-        　　　　　　　　追加したい単語と同名のロールを作成し，メンションによって通知が送信されるようにします
+        追加したい単語と同名のロールを作成し，メンションによって通知が送信されるようにします
         """
         _guild = ctx.guild
         await ctx.send(f'{_guild.name}, {_guild.id}')
@@ -115,7 +117,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
     async def delete(self, ctx, *args):
         """
         検索対象の単語を消す
-        　　　　　　　　一致しなかったらそのまま
+        一致しなかったらそのまま
         """
         # TODO:
         pass
@@ -138,27 +140,61 @@ class ArxivCheckCog(commands.Cog, name="checker"):
             channel = self.bot.get_channel(761580345090113569)
             await channel.send(now + '時間だよ')
 
+    # https://qiita.com/_yushuu/items/83c51e29771530646659
+    def trans(self, text) -> str:
+        tr = Translator()
+        result = ""
+        while True:
+            try:
+                result = tr.translate(text, src="en", dest="ja").text
+                break
+            except Exception as e:
+                #tr = Translator()
+                # tr = Translator(service_urls=['translate.googleapis.com'])
+                pass
+        return result
+
     def get_paper(self, keyword) -> List[Paper]:
-        dt_now = datetime.datetime.now(pytz.timezone('Asia/Tokyo'))
-        dt_old = dt_now - datetime.timedelta(days=1)
+        dt_now = datetime.now(pytz.timezone('Asia/Tokyo'))
+        dt_old = dt_now - timedelta(days=30)
         dt_day = dt_old.strftime('%Y%m%d')
         dt_last = dt_day + '235959'
-        translator = Translator()
-        q = f'all:\"{" ".join(keyword.split("_"))}\" AND submittedDate:[{dt_day} TO {dt_last}]'
+        # print(dt_now, dt_old, dt_day, dt_last)
+
+        q = f'all:"{keyword}" AND submittedDate:[{dt_day} TO {dt_last}]'
         papers = arxiv.query(
             query=q, sort_by='submittedDate', sort_order='ascending'
         )
+        print(q)
 
+        result = []
         for paper in papers:
-            abst = ''.join(paper["summary"].splitlines())
+            abst = ' '.join(paper["summary"].splitlines())
+            # print(abst[:30])
             p = Paper(
                 link=paper["pdf_url"],
                 title=paper["title"],
                 abst=abst,
-                j_abst=translator.translate(
-                    abst, src="en", dest="ja"),
+                j_abst=self.trans(abst),
                 keywords={keyword}
             )
+            result.append(p)
+        return result
+
+    @commands.command()
+    async def test_get_paper(self, ctx):
+        print("test run")
+        await ctx.send("`test run`")
+        for paper in self.get_paper("deep"):
+            await ctx.send(f'`{paper.title}`')
+        await ctx.send("`test done`")
+
+    @commands.command()
+    async def test_get_one_paper(self, ctx):
+        await ctx.send("`test run`")
+        paper = self.get_paper("deep")[0]
+        await ctx.send(paper)
+        await ctx.send("`test done`")
 
 
 def setup(bot):
