@@ -12,8 +12,7 @@ def db_create():
         '''CREATE TABLE IF NOT EXISTS test_table (
         guild_id      INTEGER PRIMARY KEY,
         channel_id    INTEGER,
-        wordlist      JSON
-    );''')
+        wordlist      JSON);''')
     conn.commit()
 
 
@@ -32,11 +31,14 @@ def db_write(guild_id: int):
     # channel_id は 上書き
     conn = db_connect()
     c = conn.cursor()
-    json_obj = c.fetchone(
+    json_obj = c.execute(
         '''SELECT wordlist
         FROM test_table
-        WHERE guild_id = ?''',
-        guild_id)
+        WHERE guild_id = ?''', (guild_id,))
+    if json_obj is None:
+        c.execute(
+            """INSERT INTO test_table(guild_id)
+            VALUES(?)""", (guild_id,))
     conn.commit()
     conn.close()
 
@@ -47,19 +49,16 @@ def db_update(guild_id: int, word: dict):
     #
     conn = db_connect()
     c = conn.cursor()
-    json_obj = c.fetchone(
+    c.execute(
         '''SELECT wordlist
         FROM test_table
-        WHERE guild_id = ?''',
-        guild_id)
-    print(json_obj)
-    print(type(json_obj))
+        WHERE guild_id = ?''', (guild_id,))
+    json_obj = (x if (x := c.fetchone()) else '{}')
     # json_objの加工
     json_obj: dict = eval(json_obj).update(word)
     c.execute('''UPDATE test_table 
     SET wordlist = ?
-    WHERE guild_id = ?'''
-    , guild_id, json_obj)
+    WHERE guild_id = ?''', (guild_id, json_obj))
     conn.commit()
     conn.close()
 
@@ -73,8 +72,7 @@ def db_delete(guild_id: int, del_key: str):
     json_obj = c.execute(
         '''SELECT word_list
         FROM test_table
-        WHERE guild_id = ?''',
-        guild_id)
+        WHERE guild_id = ?''', (guild_id,))
     json_obj.pop(del_key)
     conn.commit()
     conn.close()
@@ -84,11 +82,19 @@ def db_set(guild_id: int, channel_id: int):
     # channel_idを設定する
     conn = db_connect()
     c = conn.cursor()
-    c.execute(
-        '''UPDATE test_table
-        SET channel_id = ?
-        WHERE guild_id = ?''',
-        channel_id, guild_id)
+    tmp = c.execute(
+        "SELECT guild_id FROM test_table WHERE guild_id = ?", (guild_id,))
+    print(tmp)
+    if tmp is None:
+        c.execute(
+            '''INSERT INTO test_table(guild_id, channel_id)
+            VALUES(?, ?)''', (guild_id, channel_id))
+    else:
+        c.execute(
+            '''UPDATE test_table
+            SET channel_id = ?
+            WHERE guild_id = ?''',
+            (channel_id, guild_id))
     conn.commit()
     conn.close()
 

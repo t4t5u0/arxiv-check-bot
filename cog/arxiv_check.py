@@ -76,15 +76,16 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         # self.bot.load_extension('cog.sort_riddle')
 
     @commands.Cog.listener()
-    async def on_guild_join(self, guild):
-        guild_id = guild.id
-        db_write(guild_id)
-
-    @commands.Cog.listener()
     async def on_ready(self):
+        db_create()
         print('login')
         self.periodically.start()
         await self.bot.change_presence(activity=discord.Game(name='/help'))
+
+    @commands.Cog.listener()
+    async def on_guild_join(self, guild):
+        guild_id = guild.id
+        db_write(guild_id)
 
     @commands.command()
     async def neko(self, ctx):
@@ -95,7 +96,8 @@ class ArxivCheckCog(commands.Cog, name="checker"):
     async def _set(self, ctx):
         # channel_id を設定
         # db_set
-        pass
+        print(ctx.guild.id, ctx.channel.id)
+        db_set(ctx.guild.id, ctx.channel.id)
 
     @commands.command()
     async def add(self, ctx, *args):
@@ -104,7 +106,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         追加したい単語と同名のロールを作成し，メンションによって通知が送信されるようにします
         """
         _guild = ctx.guild
-        await ctx.send(f'{_guild.name}, {_guild.id}')
+        # await ctx.send(f'{_guild.name}, {_guild.id}')
 
         # async def role(self, x, guild):
         # result = discord.utils.get(_guild.roles, name=x)
@@ -115,14 +117,14 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         arg_dict = []
         for arg in args:
             role = await _guild.create_role(name=arg, mentionable=True)
-            await ctx.send(role.name)
-            arg_dict.append(
-                {"role_name": role.name, "role_id": role.id}
-            )
+            # await ctx.send(role.name)
+            x = {"role_name": role.name, "role_id": role.id}
+            arg_dict.append(x)
+            db_update(ctx.guild.id ,x)
 
         # arg_dict = [{"key":x, "role": r} for x in args if (r := self.role(x, _guild)) is not None]
         self.word_list.append(arg_dict)
-        await ctx.send(arg_dict)
+        # await ctx.send(arg_dict)
         await ctx.send("検索ワードを追加しました["
                        + ' ,'.join(arg["role_name"] for arg in arg_dict) + ']')
 
@@ -139,8 +141,11 @@ class ArxivCheckCog(commands.Cog, name="checker"):
     async def show(self, ctx):
         """検索対象の単語一覧を表示"""
         # TODO:
+        if not self.word_list:
+            await ctx.send('単語が登録されていません')
+            return 
         for item in self.word_list[0]:
-            await ctx.send(item["key"])
+            await ctx.send(item["role_name"])
 
     # 定期実行する関数
 
