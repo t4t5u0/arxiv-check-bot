@@ -14,6 +14,7 @@ from discord.ext import commands, tasks
 from discord.ext.commands import Bot
 from googletrans import Translator
 
+from cog.database import *
 # 検索するべき単語の追加削除
 # 単語リストが更新されたとき，それに付随するロールを作成する
 # ある論文に単語リスト中のキーワードが含まれていたら，まとめて，メンションする
@@ -75,6 +76,11 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         # self.bot.load_extension('cog.sort_riddle')
 
     @commands.Cog.listener()
+    async def on_guild_join(self, guild):
+        guild_id = guild.id
+        db_write(guild_id)
+
+    @commands.Cog.listener()
     async def on_ready(self):
         print('login')
         self.periodically.start()
@@ -84,6 +90,12 @@ class ArxivCheckCog(commands.Cog, name="checker"):
     async def neko(self, ctx):
         """にゃうと返す"""
         await ctx.send(f'{ctx.author.mention} にゃう')
+
+    @commands.command(name="set")
+    async def _set(self, ctx):
+        # channel_id を設定
+        # db_set
+        pass
 
     @commands.command()
     async def add(self, ctx, *args):
