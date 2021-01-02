@@ -37,9 +37,10 @@ def db_write(guild_id: int):
         WHERE guild_id = ?''', (guild_id,))
     if json_obj is None:
         c.execute(
-            """INSERT INTO test_table(guild_id)
-            VALUES(?)""", (guild_id,))
+            """INSERT INTO test_table(guild_id) VALUES(?)""", (guild_id,))
     conn.commit()
+    for item in c.execute('SELECT * FROM test_table'):
+        print(item)
     conn.close()
 
 
@@ -53,12 +54,15 @@ def db_update(guild_id: int, word: dict):
         '''SELECT wordlist
         FROM test_table
         WHERE guild_id = ?''', (guild_id,))
-    json_obj = (x if (x := c.fetchone()) else '{}')
+    json_obj = (x if (x := c.fetchone()[0]) else '{}')
+    print(f'{json_obj=}')
     # json_objの加工
-    json_obj: dict = eval(json_obj).update(word)
+    json_obj: dict = eval(json_obj)
+    json_obj.update(word)
+    print(json_obj)
     c.execute('''UPDATE test_table 
-    SET wordlist = ?
-    WHERE guild_id = ?''', (guild_id, json_obj))
+            SET wordlist = ?
+            WHERE guild_id = ?''', (str(json_obj), guild_id))
     conn.commit()
     conn.close()
 
@@ -67,24 +71,35 @@ def db_delete(guild_id: int, del_key: str):
     # 単語の削除を行う
     # guild_id で検索して，word_list からJSONオブジェクトを一部消去
     # Discordのロールの削除は呼び出し元で行う
+
     conn = db_connect()
     c = conn.cursor()
-    json_obj = c.execute(
-        '''SELECT word_list
+    c.execute(
+        '''SELECT wordlist
         FROM test_table
         WHERE guild_id = ?''', (guild_id,))
-    json_obj.pop(del_key)
+    json_obj = c.fetchone()
+    try:
+        json_obj.pop(del_key)
+    except KeyError:
+        conn.close()
+        return False
+    c.execute(
+        '''UPDATE test_table
+        SET wordlist = ?''', (json_obj,))
     conn.commit()
     conn.close()
+    return True
 
 
 def db_set(guild_id: int, channel_id: int):
     # channel_idを設定する
     conn = db_connect()
     c = conn.cursor()
-    tmp = c.execute(
+    c.execute(
         "SELECT guild_id FROM test_table WHERE guild_id = ?", (guild_id,))
-    print(tmp)
+    tmp = c.fetchone()
+    print(f'{tmp=}')
     if tmp is None:
         c.execute(
             '''INSERT INTO test_table(guild_id, channel_id)
@@ -96,15 +111,18 @@ def db_set(guild_id: int, channel_id: int):
             WHERE guild_id = ?''',
             (channel_id, guild_id))
     conn.commit()
-    conn.close()
-
-
-def db_show():
-    conn = db_connect()
-    c = conn.cursor()
     for item in c.execute('SELECT * FROM test_table'):
         print(item)
     conn.close()
+
+
+def db_show(guild_id: int):
+    conn = db_connect()
+    c = conn.cursor()
+    c.execute('SELECT * FROM test_table WHERE guild_id = ?', (guild_id,))
+    result = c.fetchone()
+    conn.close()
+    return result
 
 
 '''
