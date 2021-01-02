@@ -1,18 +1,21 @@
+import configparser
 import csv
 import json
-import configparser
-from datetime import datetime, timedelta
+import sqlite3
 import time
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from typing import Dict, List, Set, Tuple
 
 import arxiv
 import discord
+from discord import guild
 import pytz
 from discord.ext import commands, tasks
 from discord.ext.commands import Bot
 from googletrans import Translator
 
+from cog.database import *
 # 検索するべき単語の追加削除
 # 単語リストが更新されたとき，それに付随するロールを作成する
 # ある論文に単語リスト中のキーワードが含まれていたら，まとめて，メンションする
@@ -38,6 +41,7 @@ class Paper:
     title: str
     abst: str
     j_abst: str
+    role_list: List[str]
     keywords: Set[str]
 
     def __add__(self, other):
@@ -75,14 +79,27 @@ class ArxivCheckCog(commands.Cog, name="checker"):
 
     @commands.Cog.listener()
     async def on_ready(self):
+        db_create()
         print('login')
         self.periodically.start()
         await self.bot.change_presence(activity=discord.Game(name='/help'))
+
+    @commands.Cog.listener()
+    async def on_guild_join(self, guild):
+        guild_id = guild.id
+        db_write(guild_id)
 
     @commands.command()
     async def neko(self, ctx):
         """にゃうと返す"""
         await ctx.send(f'{ctx.author.mention} にゃう')
+
+    @commands.command(name="set")
+    async def _set(self, ctx):
+        # channel_id を設定
+        # db_set
+        print(ctx.guild.id, ctx.channel.id)
+        db_set(ctx.guild.id, ctx.channel.id)
 
     @commands.command()
     async def add(self, ctx, *args):
@@ -91,27 +108,36 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         追加したい単語と同名のロールを作成し，メンションによって通知が送信されるようにします
         """
         _guild = ctx.guild
-        await ctx.send(f'{_guild.name}, {_guild.id}')
+        # await ctx.send(f'{_guild.name}, {_guild.id}')
 
         # async def role(self, x, guild):
-        # result = discord.utils.get(_guild.roles, name=x)
-        # if result is None:
-        #     # create role
-        #     await _guild.create_role(name=x)
+        #     result = discord.utils.get(_guild.roles, name=x)
+        #     if result is None:
+        #         # create role
+        #         await _guild.create_role(name=x)
 
         arg_dict = []
         for arg in args:
-            role = await _guild.create_role(name=arg, mentionable=True)
-            await ctx.send(role.name)
-            arg_dict.append(
-                {"role_name": role.name, "role_id": role.id}
-            )
+            # ここでロールの存在チェックをしないと無限にロールが生成される
+            role = discord.utils.get(ctx.guild.role, name=arg)
+            # メンションできない場合
+            if not role.mentionable:
+                pass
+            # ロールが存在しなかったら
+            if role is None:
+                role = await _guild.create_role(name=arg, mentionable=True)
+            # await ctx.send(role.name)
+            x = {"role_name": role.name, "role_id": role.id}
+            arg_dict.append(x)
+            db_update(ctx.guild.id ,x)
 
         # arg_dict = [{"key":x, "role": r} for x in args if (r := self.role(x, _guild)) is not None]
-        self.word_list.append(arg_dict)
-        await ctx.send(arg_dict)
-        await ctx.send("検索ワードを追加しました["
-                       + ' ,'.join(arg["role_name"] for arg in arg_dict) + ']')
+        # self.word_list.append(arg_dict)
+        # await ctx.send(arg_dict)
+        await ctx.send(
+            "検索ワードを追加しました\n" + 
+            '[' + ', '.join(arg["role_name"] for arg in arg_dict) + ']'
+        )
 
     @commands.command()
     async def delete(self, ctx, *args):
@@ -119,15 +145,24 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         検索対象の単語を消す
         一致しなかったらそのまま
         """
-        # TODO:
-        pass
+        for arg in args:
+            result = db_delete(ctx.guild.id, (arg,))
+            if result:
+                await ctx.send(f'{arg} を削除しました')
+            else:
+                await ctx.send(f'{arg} というワードは存在しません')
 
     @commands.command()
     async def show(self, ctx):
         """検索対象の単語一覧を表示"""
         # TODO:
-        for item in self.word_list[0]:
-            await ctx.send(item["key"])
+        word_list = db_show(ctx.guild.id)
+        print(word_list)
+        if not word_list:
+            await ctx.send('単語が登録されていません')
+            return 
+        for item in word_list:
+            await ctx.send(item)
 
     # 定期実行する関数
 
@@ -136,6 +171,13 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         # https://discordpy.readthedocs.io/ja/latest/ext/tasks/index.html
         now = datetime.now().strftime("%H:%M")
         if now == '18:00':
+            conn  = db_connect()
+            c = conn.cursor()
+            c.execute("SELECT * FROM test_table")
+            for result in c.fetchall():
+                guild_id, channel_id, keywords = result
+                channel = self.bot.get_channel(int(channel_id))
+            # print(result)
             # print(now)
             channel = self.bot.get_channel(761580345090113569)
             await channel.send(now + '時間だよ')
@@ -154,7 +196,9 @@ class ArxivCheckCog(commands.Cog, name="checker"):
                 pass
         return result
 
-    def get_paper(self, keyword) -> List[Paper]:
+    # def get_paper(self, keyword) -> List[Paper]:
+
+    def get_paper(self, guild_id: int, channel_id: int, keywords) -> List[Paper]:
         dt_now = datetime.now(pytz.timezone('Asia/Tokyo'))
         dt_old = dt_now - timedelta(days=30)
         dt_day = dt_old.strftime('%Y%m%d')
@@ -165,18 +209,19 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         papers = arxiv.query(
             query=q, sort_by='submittedDate', sort_order='ascending'
         )
-        print(q)
+        # print(q)
 
         result = []
         for paper in papers:
-            abst = ' '.join(paper["summary"].splitlines())
+            abst = ''.join(paper["summary"].splitlines())
             # print(abst[:30])
             p = Paper(
                 link=paper["pdf_url"],
                 title=paper["title"],
                 abst=abst,
                 j_abst=self.trans(abst),
-                keywords={keyword}
+                roles=keywords.values(),
+                keywords=set(keywords.keys())
             )
             result.append(p)
         return result
