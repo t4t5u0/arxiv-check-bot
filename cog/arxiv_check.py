@@ -261,10 +261,3 @@ class ArxivCheckCog(commands.Cog, name="checker"):
 def setup(bot):
     return bot.add_cog(ArxivCheckCog(bot))
 
-
-Vector = List[float]
-
-
-def show(vec: Vector) -> NoReturn:
-    for s in vec:
-        print(s)
