@@ -1,5 +1,5 @@
 import sqlite3
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 # sqlite3.register_adapter(list, lambda l: ';'.join([i for i in l]))
 # sqlite3.register_converter(
