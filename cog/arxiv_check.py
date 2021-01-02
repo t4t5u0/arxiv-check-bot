@@ -121,7 +121,8 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         arg_dict = []
         for arg in args:
             # ここでロールの存在チェックをしないと無限にロールが生成される
-            role: Optional[discord.Role] = discord.utils.get(ctx.guild.roles, name=arg)
+            role: Optional[discord.Role] = discord.utils.get(
+                ctx.guild.roles, name=arg)
             # メンションできない場合
             if not role.mentionable:
                 pass
@@ -130,15 +131,15 @@ class ArxivCheckCog(commands.Cog, name="checker"):
                 role: discord.Role = await _guild.create_role(name=arg, mentionable=True)
             # await ctx.send(role.name)
             # x = {"role_name": role.name, "role_id": role.id}
-            x = {role.name : role.id}
+            x = {role.name: role.id}
             arg_dict.append(role.name)
-            db_update(ctx.guild.id ,x)
+            db_update(ctx.guild.id, x)
 
         # arg_dict = [{"key":x, "role": r} for x in args if (r := self.role(x, _guild)) is not None]
         # self.word_list.append(arg_dict)
         # await ctx.send(arg_dict)
         await ctx.send(
-            "検索ワードを追加しました\n" + 
+            "検索ワードを追加しました\n" +
             '[' + ', '.join(role_name for role_name in arg_dict) + ']'
         )
 
@@ -164,7 +165,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         word_list = eval(word_list)
         if not word_list:
             await ctx.send('単語が登録されていません')
-            return 
+            return
         for i, item in enumerate(word_list.keys(), start=1):
             await ctx.send(f'{i:2}. {item}')
 
@@ -183,6 +184,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
                 guild_id, channel_id, keywords = result
                 guild_id, channel_id, keywords = int(guild_id), int(channel_id), eval(keywords)
                 channel = self.bot.get_channel(channel_id)
+                papers = self.bot.get_papers(guild_id, channel_id, keywords)
             # print(result)
             # print(now)
             channel = self.bot.get_channel(761580345090113569)
@@ -206,45 +208,52 @@ class ArxivCheckCog(commands.Cog, name="checker"):
 
     def get_paper(self, guild_id: int, channel_id: int, keywords: dict) -> List[Paper]:
         dt_now = datetime.now(pytz.timezone('Asia/Tokyo'))
-        dt_old = dt_now - timedelta(days=1)
+        dt_old = dt_now - timedelta(days=30)
         dt_day = dt_old.strftime('%Y%m%d')
         dt_last = dt_day + '235959'
         # print(dt_now, dt_old, dt_day, dt_last)
-        words = keywords.keys()
-        role_id = keywords.values()
-        q = f'all:"{words}" AND submittedDate:[{dt_day} TO {dt_last}]'
-        papers = arxiv.query(
-            query=q, sort_by='submittedDate', sort_order='ascending'
-        )
-        # print(q)
-
+        words = list(keywords.keys())
+        # role_id = keywords.values()
         result = []
-        for paper in papers:
-            abst = ''.join(paper["summary"].splitlines())
-            # print(abst[:30])
-            p = Paper(
-                link=paper["pdf_url"],
-                title=paper["title"],
-                abst=abst,
-                j_abst=self.trans(abst),
-                # roles=keyword.values(), # DBから拾ってきたやつをここに入れる
-                keywords=keywords
+        for word in words:
+            q = f'all:"{word}" AND submittedDate:[{dt_day} TO {dt_last}]'
+            papers = arxiv.query(
+                query=q, sort_by='submittedDate', sort_order='ascending'
             )
-            result.append(p)
+            print(q)
+
+            # result = []
+            for paper in papers:
+                abst = ''.join(paper["summary"].splitlines())
+                # print(abst[:30])
+                p = Paper(
+                    link=paper["pdf_url"],
+                    title=paper["title"],
+                    abst=abst,
+                    j_abst=self.trans(abst),
+                    # roles=keyword.values(), # DBから拾ってきたやつをここに入れる
+                    keywords=keywords
+                )
+                result.append(p)
         return result
 
     @commands.command()
-    async def test_get_paper(self, ctx):
+    async def test_get_paper(self, ctx, arg):
         print("test run")
         await ctx.send("`test run`")
-        for paper in self.get_paper("deep"):
+        for paper in self.get_paper(arg):
             await ctx.send(f'`{paper.title}`')
         await ctx.send("`test done`")
 
     @commands.command()
-    async def test_get_one_paper(self, ctx):
+    async def test_get_one_paper(self, ctx, arg):
         await ctx.send("`test run`")
-        paper = self.get_paper("deep")[0]
+        paper = self.get_paper(ctx.guild.id, ctx.channel.id, {arg: 0})
+        if not paper:
+            await ctx.send("no result")
+            await ctx.send("`test done`")
+            return
+        paper = paper[0]
         await ctx.send(paper)
         await ctx.send("`test done`")
 
@@ -252,8 +261,10 @@ class ArxivCheckCog(commands.Cog, name="checker"):
 def setup(bot):
     return bot.add_cog(ArxivCheckCog(bot))
 
+
 Vector = List[float]
+
+
 def show(vec: Vector) -> NoReturn:
     for s in vec:
         print(s)
-
