@@ -117,7 +117,7 @@ def db_set(guild_id: int, channel_id: int):
     conn.close()
 
 
-def db_show(guild_id: Optional[int]) -> dict:
+def db_show(guild_id: Optional[int]) -> Tuple[int, int , dict]:
     """
     guild_idを設定しなかったら全部返す．
     """
