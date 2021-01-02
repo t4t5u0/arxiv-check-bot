@@ -168,7 +168,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
     # 定期実行する関数
 
     @tasks.loop(minutes=1)
-    async def periodically(self):
+    async def periodically_fnc(self):
         # https://discordpy.readthedocs.io/ja/latest/ext/tasks/index.html
         now = datetime.now().strftime("%H:%M")
         if now == '18:00':
