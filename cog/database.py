@@ -1,5 +1,5 @@
 import sqlite3
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 # sqlite3.register_adapter(list, lambda l: ';'.join([i for i in l]))
 # sqlite3.register_converter(
@@ -117,7 +117,7 @@ def db_set(guild_id: int, channel_id: int):
     conn.close()
 
 
-def db_show(guild_id: Optional[int]) -> Tuple[int, int , dict]:
+def db_show(guild_id: Optional[int]) -> Union[Tuple[int, int , dict], List[Tuple[int, int, dict]]]:
     """
     guild_idを設定しなかったら全部返す．
     """
