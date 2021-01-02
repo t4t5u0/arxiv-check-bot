@@ -1,4 +1,5 @@
 import sqlite3
+from typing import List, Optional
 
 # sqlite3.register_adapter(list, lambda l: ';'.join([i for i in l]))
 # sqlite3.register_converter(
@@ -116,11 +117,18 @@ def db_set(guild_id: int, channel_id: int):
     conn.close()
 
 
-def db_show(guild_id: int):
+def db_show(guild_id: Optional[int]) -> dict:
+    """
+    guild_idを設定しなかったら全部返す．
+    """
+    # 生のレコードを全部返す
     conn = db_connect()
     c = conn.cursor()
-    c.execute('SELECT * FROM test_table WHERE guild_id = ?', (guild_id,))
-    result = c.fetchone()
+    if guild_id is None:
+        c.execute('SELECT * FROM test_table')
+    else:
+        c.execute('SELECT * FROM test_table WHERE guild_id = ?', (guild_id,))
+    result: dict = c.fetchone()
     conn.close()
     return result
 
@@ -129,8 +137,7 @@ def db_show(guild_id: int):
 {
     'guild_id': int,
     'channel_id': int,
-    'wordlist': [
-        {'word': str, 'role_id' :int},
-    ]
+    'wordlist': json
+        {'role1': role1_id, 'role2': role2_id},
 }
 '''

@@ -5,7 +5,7 @@ import sqlite3
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, NoReturn, Optional, Set, Tuple, Union
 
 import arxiv
 import discord
@@ -41,8 +41,10 @@ class Paper:
     title: str
     abst: str
     j_abst: str
-    role_list: List[str]
-    keywords: Set[str]
+    # 下2つを固める
+    # role_list: List[str]
+    # keywords: Set[str]
+    keywords: dict
 
     def __add__(self, other):
         if self.link == other.link:
@@ -101,8 +103,8 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         print(ctx.guild.id, ctx.channel.id)
         db_set(ctx.guild.id, ctx.channel.id)
 
-    @commands.command()
-    async def add(self, ctx, *args):
+    @commands.command(name='add')
+    async def _add(self, ctx: discord, *args):
         """
         検索したい単語を追加
         追加したい単語と同名のロールを作成し，メンションによって通知が送信されるようにします
@@ -119,17 +121,17 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         arg_dict = []
         for arg in args:
             # ここでロールの存在チェックをしないと無限にロールが生成される
-            role = discord.utils.get(ctx.guild.role, name=arg)
+            role: Optional[discord.Role] = discord.utils.get(ctx.guild.roles, name=arg)
             # メンションできない場合
             if not role.mentionable:
                 pass
             # ロールが存在しなかったら
             if role is None:
-                role = await _guild.create_role(name=arg, mentionable=True)
+                role: discord.Role = await _guild.create_role(name=arg, mentionable=True)
             # await ctx.send(role.name)
             # x = {"role_name": role.name, "role_id": role.id}
             x = {role.name : role.id}
-            arg_dict.append(x)
+            arg_dict.append(role.name)
             db_update(ctx.guild.id ,x)
 
         # arg_dict = [{"key":x, "role": r} for x in args if (r := self.role(x, _guild)) is not None]
@@ -147,7 +149,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         一致しなかったらそのまま
         """
         for arg in args:
-            result = db_delete(ctx.guild.id, (arg,))
+            result = db_delete(ctx.guild.id, arg)
             if result:
                 await ctx.send(f'{arg} を削除しました')
             else:
@@ -157,25 +159,27 @@ class ArxivCheckCog(commands.Cog, name="checker"):
     async def show(self, ctx):
         """検索対象の単語一覧を表示"""
         # TODO:
-        word_list = db_show(ctx.guild.id)
+        _, _, word_list = db_show(ctx.guild.id)
         print(word_list)
+        word_list = eval(word_list)
         if not word_list:
             await ctx.send('単語が登録されていません')
             return 
-        for item in word_list:
-            await ctx.send(item)
+        for i, item in enumerate(word_list.keys(), start=1):
+            await ctx.send(f'{i:2}. {item}')
 
     # 定期実行する関数
 
     @tasks.loop(minutes=1)
-    async def periodically_fnc(self):
+    async def periodically(self):
         # https://discordpy.readthedocs.io/ja/latest/ext/tasks/index.html
         now = datetime.now().strftime("%H:%M")
         if now == '18:00':
-            conn  = db_connect()
-            c = conn.cursor()
-            c.execute("SELECT * FROM test_table")
-            for result in c.fetchall():
+            # conn  = db_connect()
+            # c = conn.cursor()
+            # c.execute("SELECT * FROM test_table")
+            # for result in c.fetchall():
+            for result in db_show():
                 guild_id, channel_id, keywords = result
                 guild_id, channel_id, keywords = int(guild_id), int(channel_id), eval(keywords)
                 channel = self.bot.get_channel(channel_id)
@@ -200,14 +204,15 @@ class ArxivCheckCog(commands.Cog, name="checker"):
 
     # def get_paper(self, keyword) -> List[Paper]:
 
-    def get_paper(self, guild_id: int, channel_id: int, keyword: dict) -> List[Paper]:
+    def get_paper(self, guild_id: int, channel_id: int, keywords: dict) -> List[Paper]:
         dt_now = datetime.now(pytz.timezone('Asia/Tokyo'))
         dt_old = dt_now - timedelta(days=1)
         dt_day = dt_old.strftime('%Y%m%d')
         dt_last = dt_day + '235959'
         # print(dt_now, dt_old, dt_day, dt_last)
-
-        q = f'all:"{keyword}" AND submittedDate:[{dt_day} TO {dt_last}]'
+        words = keywords.keys()
+        role_id = keywords.values()
+        q = f'all:"{words}" AND submittedDate:[{dt_day} TO {dt_last}]'
         papers = arxiv.query(
             query=q, sort_by='submittedDate', sort_order='ascending'
         )
@@ -222,8 +227,8 @@ class ArxivCheckCog(commands.Cog, name="checker"):
                 title=paper["title"],
                 abst=abst,
                 j_abst=self.trans(abst),
-                roles=keyword.values(), # DBから拾ってきたやつをここに入れる
-                keywords=set(keyword.keys())
+                # roles=keyword.values(), # DBから拾ってきたやつをここに入れる
+                keywords=keywords
             )
             result.append(p)
         return result
@@ -246,3 +251,9 @@ class ArxivCheckCog(commands.Cog, name="checker"):
 
 def setup(bot):
     return bot.add_cog(ArxivCheckCog(bot))
+
+Vector = List[float]
+def show(vec: Vector) -> NoReturn:
+    for s in vec:
+        print(s)
+
