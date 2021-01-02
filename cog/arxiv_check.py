@@ -127,7 +127,8 @@ class ArxivCheckCog(commands.Cog, name="checker"):
             if role is None:
                 role = await _guild.create_role(name=arg, mentionable=True)
             # await ctx.send(role.name)
-            x = {"role_name": role.name, "role_id": role.id}
+            # x = {"role_name": role.name, "role_id": role.id}
+            x = {role.name : role.id}
             arg_dict.append(x)
             db_update(ctx.guild.id ,x)
 
@@ -136,7 +137,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         # await ctx.send(arg_dict)
         await ctx.send(
             "検索ワードを追加しました\n" + 
-            '[' + ', '.join(arg["role_name"] for arg in arg_dict) + ']'
+            '[' + ', '.join(role_name for role_name in arg_dict) + ']'
         )
 
     @commands.command()
@@ -176,11 +177,12 @@ class ArxivCheckCog(commands.Cog, name="checker"):
             c.execute("SELECT * FROM test_table")
             for result in c.fetchall():
                 guild_id, channel_id, keywords = result
-                channel = self.bot.get_channel(int(channel_id))
+                guild_id, channel_id, keywords = int(guild_id), int(channel_id), eval(keywords)
+                channel = self.bot.get_channel(channel_id)
             # print(result)
             # print(now)
             channel = self.bot.get_channel(761580345090113569)
-            await channel.send(now + '時間だよ')
+            await channel.send(now + '時だよ')
 
     # https://qiita.com/_yushuu/items/83c51e29771530646659
     def trans(self, text) -> str:
@@ -198,9 +200,9 @@ class ArxivCheckCog(commands.Cog, name="checker"):
 
     # def get_paper(self, keyword) -> List[Paper]:
 
-    def get_paper(self, guild_id: int, channel_id: int, keywords) -> List[Paper]:
+    def get_paper(self, guild_id: int, channel_id: int, keyword: dict) -> List[Paper]:
         dt_now = datetime.now(pytz.timezone('Asia/Tokyo'))
-        dt_old = dt_now - timedelta(days=30)
+        dt_old = dt_now - timedelta(days=1)
         dt_day = dt_old.strftime('%Y%m%d')
         dt_last = dt_day + '235959'
         # print(dt_now, dt_old, dt_day, dt_last)
@@ -220,8 +222,8 @@ class ArxivCheckCog(commands.Cog, name="checker"):
                 title=paper["title"],
                 abst=abst,
                 j_abst=self.trans(abst),
-                roles=keywords.values(),
-                keywords=set(keywords.keys())
+                roles=keyword.values(), # DBから拾ってきたやつをここに入れる
+                keywords=set(keyword.keys())
             )
             result.append(p)
         return result
