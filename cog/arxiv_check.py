@@ -37,6 +37,13 @@ from cog.database import *
 # async def
 
 
+def my_index(l, x) -> int:
+    if x in l:
+        return l.index(x)
+    else:
+        return -1
+
+
 @dataclass
 class Paper:
     link: str
@@ -46,19 +53,23 @@ class Paper:
     # 下2つを固める
     # role_list: list[str]
     # keywords: Set[str]
-    keywords: dict
+    keywords: dict  # {"role1": roleid1, "role2": roleid2, ...}
 
     def __add__(self, other):
         if self.link == other.link:
             self.keywords += other.keywords
 
     # await ctx.send のときに使う
-    def __str__(self) -> str:
+    def show(self, ctx: discord) -> str:
+        role_ids = self.keywords.values()
+        roles: list[discord.Role] = [discord.utils.get(
+            ctx.guild.roles, id=role_id) for role_id in role_ids]
+        roles_mentions: list[str] = [role.mention for role in roles]
         return (
             f'{self.title}\n'
             f'{self.link}\n'
             f'{self.j_abst}\n'
-            f'{}'
+            f'{" ".join(*roles_mentions)}'
         )
         # ロールのメンション処理を追加する
         # role.mention
@@ -67,6 +78,7 @@ class Paper:
 class Papers(UserList):
 
     def __init__(self, arg: list[Paper]):
+        arg = arg if arg else []
         super().__init__(arg)
         self.data: list[Paper]
 
@@ -75,8 +87,9 @@ class Papers(UserList):
             self.append(paper)
 
     def append(self, other: Paper):
-
-        if (i := self.data.index(other)) != -1:
+        # self.dataから
+        links = [paper.link for paper in self.data]
+        if (i := my_index(links, other.link)) != -1:
             self.data[i].keywords.update(other.keywords)
         else:
             self.data.append(other)
@@ -144,12 +157,12 @@ class ArxivCheckCog(commands.Cog, name="checker"):
             # ここでロールの存在チェックをしないと無限にロールが生成される
             role: Optional[discord.Role] = discord.utils.get(
                 ctx.guild.roles, name=arg)
-            # メンションできない場合
-            if not role.mentionable:
-                pass
             # ロールが存在しなかったら
             if role is None:
                 role: discord.Role = await _guild.create_role(name=arg, mentionable=True)
+            # メンションできない場合
+            if not role.mentionable:
+                pass
             # await ctx.send(role.name)
             # x = {"role_name": role.name, "role_id": role.id}
             x = {role.name: role.id}
@@ -236,7 +249,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         # print(dt_now, dt_old, dt_day, dt_last)
         words = list(keywords.keys())
         # role_id = keywords.values()
-        result = Papers()
+        result = Papers(None)
         for word in words:
             q = f'all:"{word}" AND submittedDate:[{dt_day} TO {dt_last}]'
             papers = arxiv.query(
@@ -270,13 +283,13 @@ class ArxivCheckCog(commands.Cog, name="checker"):
     @commands.command()
     async def test_get_one_paper(self, ctx, arg):
         await ctx.send("`test run`")
-        paper = self.get_papers(ctx.guild.id, ctx.channel.id, {arg: 0})
-        if not paper:
+        papers = self.get_papers(ctx.guild.id, ctx.channel.id, {arg: 0})
+        if not papers:
             await ctx.send("no result")
             await ctx.send("`test done`")
             return
-        paper = paper[0]
-        await ctx.send(paper)
+        paper: Paper = papers[0]
+        await ctx.send(paper.__str__(ctx))
         await ctx.send("`test done`")
 
 
