@@ -3,7 +3,7 @@ import csv
 import json
 import sqlite3
 import time
-from collections import Userlist
+from collections import UserList
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional
@@ -64,11 +64,15 @@ class Paper:
         # role.mention
 
 
-class Papers(Userlist):
+class Papers(UserList):
 
     def __init__(self, arg: list[Paper]):
         super().__init__(arg)
         self.data: list[Paper]
+
+    def __add__(self, other: list[Paper]):
+        for paper in other:
+            self.append(paper)
 
     def append(self, other: Paper):
 
@@ -232,7 +236,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         # print(dt_now, dt_old, dt_day, dt_last)
         words = list(keywords.keys())
         # role_id = keywords.values()
-        result = []
+        result = Papers()
         for word in words:
             q = f'all:"{word}" AND submittedDate:[{dt_day} TO {dt_last}]'
             papers = arxiv.query(
