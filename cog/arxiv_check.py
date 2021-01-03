@@ -65,8 +65,10 @@ class Paper:
 
 
 class Papers(Userlist):
+
     def __init__(self, arg: list[Paper]):
         super().__init__(arg)
+        self.data: list[Paper]
 
     def append(self, other: Paper):
 
@@ -200,7 +202,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
                 guild_id, channel_id, keywords = int(
                     guild_id), int(channel_id), eval(keywords)
                 channel = self.bot.get_channel(channel_id)
-                papers = self.bot.get_papers(guild_id, channel_id, keywords)
+                papers = self.get_papers(guild_id, channel_id, keywords)
             # print(result)
             # print(now)
             channel = self.bot.get_channel(761580345090113569)
@@ -222,7 +224,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
 
     # def get_paper(self, keyword) -> list[Paper]:
 
-    def get_paper(self, guild_id: int, channel_id: int, keywords: dict) -> list[Paper]:
+    def get_papers(self, guild_id: int, channel_id: int, keywords: dict) -> Papers:
         dt_now = datetime.now(pytz.timezone('Asia/Tokyo'))
         dt_old = dt_now - timedelta(days=30)
         dt_day = dt_old.strftime('%Y%m%d')
@@ -257,14 +259,14 @@ class ArxivCheckCog(commands.Cog, name="checker"):
     async def test_get_paper(self, ctx, arg):
         print("test run")
         await ctx.send("`test run`")
-        for paper in self.get_paper(arg):
+        for paper in self.get_papers(arg):
             await ctx.send(f'`{paper.title}`')
         await ctx.send("`test done`")
 
     @commands.command()
     async def test_get_one_paper(self, ctx, arg):
         await ctx.send("`test run`")
-        paper = self.get_paper(ctx.guild.id, ctx.channel.id, {arg: 0})
+        paper = self.get_papers(ctx.guild.id, ctx.channel.id, {arg: 0})
         if not paper:
             await ctx.send("no result")
             await ctx.send("`test done`")
