@@ -3,19 +3,21 @@ import csv
 import json
 import sqlite3
 import time
+from collections import Userlist
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, NoReturn, Optional, Set, Tuple, Union
+from typing import Optional
 
 import arxiv
 import discord
-from discord import guild
 import pytz
+from discord import guild
 from discord.ext import commands, tasks
 from discord.ext.commands import Bot
 from googletrans import Translator
 
 from cog.database import *
+
 # 検索するべき単語の追加削除
 # 単語リストが更新されたとき，それに付随するロールを作成する
 # ある論文に単語リスト中のキーワードが含まれていたら，まとめて，メンションする
@@ -42,7 +44,7 @@ class Paper:
     abst: str
     j_abst: str
     # 下2つを固める
-    # role_list: List[str]
+    # role_list: list[str]
     # keywords: Set[str]
     keywords: dict
 
@@ -56,9 +58,22 @@ class Paper:
             f'{self.title}\n'
             f'{self.link}\n'
             f'{self.j_abst}\n'
+            f'{}'
         )
         # ロールのメンション処理を追加する
         # role.mention
+
+
+class Papers(Userlist):
+    def __init__(self, arg: list[Paper]):
+        super().__init__(arg)
+
+    def append(self, other: Paper):
+
+        if (i := self.data.index(other)) != -1:
+            self.data[i].keywords.update(other.keywords)
+        else:
+            self.data.append(other)
 
 
 class ArxivCheckCog(commands.Cog, name="checker"):
@@ -66,7 +81,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
     # ワードごとに設定できるのが理想
     def __init__(self, bot):
         self.bot = bot
-        self.word_list: List[dict] = []
+        self.word_list: list[dict] = []
         self.guild_id_list = []
         self.data = []
 
@@ -182,7 +197,8 @@ class ArxivCheckCog(commands.Cog, name="checker"):
             # for result in c.fetchall():
             for result in db_show():
                 guild_id, channel_id, keywords = result
-                guild_id, channel_id, keywords = int(guild_id), int(channel_id), eval(keywords)
+                guild_id, channel_id, keywords = int(
+                    guild_id), int(channel_id), eval(keywords)
                 channel = self.bot.get_channel(channel_id)
                 papers = self.bot.get_papers(guild_id, channel_id, keywords)
             # print(result)
@@ -204,9 +220,9 @@ class ArxivCheckCog(commands.Cog, name="checker"):
                 pass
         return result
 
-    # def get_paper(self, keyword) -> List[Paper]:
+    # def get_paper(self, keyword) -> list[Paper]:
 
-    def get_paper(self, guild_id: int, channel_id: int, keywords: dict) -> List[Paper]:
+    def get_paper(self, guild_id: int, channel_id: int, keywords: dict) -> list[Paper]:
         dt_now = datetime.now(pytz.timezone('Asia/Tokyo'))
         dt_old = dt_now - timedelta(days=30)
         dt_day = dt_old.strftime('%Y%m%d')
@@ -260,4 +276,3 @@ class ArxivCheckCog(commands.Cog, name="checker"):
 
 def setup(bot):
     return bot.add_cog(ArxivCheckCog(bot))
-
