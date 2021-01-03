@@ -62,14 +62,19 @@ class Paper:
     # await ctx.send のときに使う
     def show(self, ctx: discord) -> str:
         role_ids = self.keywords.values()
-        roles: list[discord.Role] = [discord.utils.get(
+        roles: Optional[list[discord.Role]] = [discord.utils.get(
             ctx.guild.roles, id=role_id) for role_id in role_ids]
-        roles_mentions: list[str] = [role.mention for role in roles]
+        print(roles)
+        if roles[0] is None:
+            roles_mentions = ""
+        else:
+            roles_mentions: list[str] = [role.mention for role in roles]
+        mentions_string = ' '.join(roles_mentions)
         return (
             f'{self.title}\n'
             f'{self.link}\n'
             f'{self.j_abst}\n'
-            f'{" ".join(*roles_mentions)}'
+            f'{mentions_string}'
         )
         # ロールのメンション処理を追加する
         # role.mention
@@ -289,7 +294,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
             await ctx.send("`test done`")
             return
         paper: Paper = papers[0]
-        await ctx.send(paper.__str__(ctx))
+        await ctx.send(paper.show(ctx))
         await ctx.send("`test done`")
 
 
