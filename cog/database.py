@@ -1,5 +1,5 @@
 import sqlite3
-from typing import List, Optional
+from typing import List, Optional, Tuple, Union
 
 # sqlite3.register_adapter(list, lambda l: ';'.join([i for i in l]))
 # sqlite3.register_converter(
@@ -55,7 +55,13 @@ def db_update(guild_id: int, word: dict):
         '''SELECT wordlist
         FROM test_table
         WHERE guild_id = ?''', (guild_id,))
-    json_obj = (x if (x := c.fetchone()[0]) else '{}')
+    x = c.fetchone()[0]
+    print(f'{x=}')
+    json_obj = None
+    if x is None:
+        json_obj = "{}"
+    else:
+        json_obj = (x if x else '{}')
     print(f'{json_obj=}')
     # json_objの加工
     json_obj: dict = eval(json_obj)
@@ -113,11 +119,11 @@ def db_set(guild_id: int, channel_id: int):
             (channel_id, guild_id))
     conn.commit()
     for item in c.execute('SELECT * FROM test_table'):
-        print(item)
+        print(f'{item=}')
     conn.close()
 
 
-def db_show(guild_id: Optional[int]) -> dict:
+def db_show(guild_id=None) -> Union[Tuple[int, int, dict], List[Tuple[int, int, dict]]]:
     """
     guild_idを設定しなかったら全部返す．
     """
@@ -128,7 +134,7 @@ def db_show(guild_id: Optional[int]) -> dict:
         c.execute('SELECT * FROM test_table')
     else:
         c.execute('SELECT * FROM test_table WHERE guild_id = ?', (guild_id,))
-    result: dict = c.fetchone()
+    result: Union[dict, list[dict]] = c.fetchall()
     conn.close()
     return result
 

@@ -3,19 +3,21 @@ import csv
 import json
 import sqlite3
 import time
+from collections import UserList
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, NoReturn, Optional, Set, Tuple, Union
+from typing import Optional
 
 import arxiv
 import discord
-from discord import guild
 import pytz
+# from discord import guild
 from discord.ext import commands, tasks
-from discord.ext.commands import Bot
+# from discord.ext.commands import Bot
 from googletrans import Translator
 
 from cog.database import *
+
 # 検索するべき単語の追加削除
 # 単語リストが更新されたとき，それに付随するロールを作成する
 # ある論文に単語リスト中のキーワードが含まれていたら，まとめて，メンションする
@@ -35,6 +37,13 @@ from cog.database import *
 # async def
 
 
+def my_index(l, x) -> int:
+    if x in l:
+        return l.index(x)
+    else:
+        return -1
+
+
 @dataclass
 class Paper:
     link: str
@@ -42,23 +51,57 @@ class Paper:
     abst: str
     j_abst: str
     # 下2つを固める
-    # role_list: List[str]
+    # role_list: list[str]
     # keywords: Set[str]
-    keywords: dict
+    keywords: dict  # {"role1": roleid1, "role2": roleid2, ...}
 
     def __add__(self, other):
         if self.link == other.link:
             self.keywords += other.keywords
 
     # await ctx.send のときに使う
-    def __str__(self) -> str:
+    def show(self, _guild: discord.Guild) -> str:
+        role_ids = self.keywords.values()
+        print(f'{self.keywords=}')
+        print(f'{role_ids=}')
+        print(f'{_guild=}')
+        roles = list(filter(lambda x: x is not None,
+                            [_guild.get_role(role_id) for role_id in role_ids]))
+        print(roles)
+        if not roles:
+            roles_mentions = ""
+        else:
+            roles_mentions: list[str] = [role.mention for role in roles]
+        mentions_string = ' '.join(roles_mentions)
         return (
-            f'{self.title}\n'
+            f'**{self.title}**\n'
+            f'{mentions_string}\n'
             f'{self.link}\n'
             f'{self.j_abst}\n'
+            f'{"-"*20}'
         )
         # ロールのメンション処理を追加する
         # role.mention
+
+
+class Papers(UserList):
+
+    def __init__(self, arg: list[Paper]):
+        arg = arg if arg else []
+        super().__init__(arg)
+        self.data: list[Paper]
+
+    def __add__(self, other: list[Paper]):
+        for paper in other:
+            self.append(paper)
+
+    def append(self, other: Paper):
+        # self.dataから
+        links = [paper.link for paper in self.data]
+        if (i := my_index(links, other.link)) != -1:
+            self.data[i].keywords.update(other.keywords)
+        else:
+            self.data.append(other)
 
 
 class ArxivCheckCog(commands.Cog, name="checker"):
@@ -66,7 +109,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
     # ワードごとに設定できるのが理想
     def __init__(self, bot):
         self.bot = bot
-        self.word_list: List[dict] = []
+        self.word_list: list[dict] = []
         self.guild_id_list = []
         self.data = []
 
@@ -123,12 +166,12 @@ class ArxivCheckCog(commands.Cog, name="checker"):
             # ここでロールの存在チェックをしないと無限にロールが生成される
             role: Optional[discord.Role] = discord.utils.get(
                 ctx.guild.roles, name=arg)
-            # メンションできない場合
-            if not role.mentionable:
-                pass
             # ロールが存在しなかったら
             if role is None:
                 role: discord.Role = await _guild.create_role(name=arg, mentionable=True)
+            # メンションできない場合
+            if not role.mentionable:
+                pass
             # await ctx.send(role.name)
             # x = {"role_name": role.name, "role_id": role.id}
             x = {role.name: role.id}
@@ -161,7 +204,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         """検索対象の単語一覧を表示"""
         # TODO:
         _, _, word_list = db_show(ctx.guild.id)
-        print(word_list)
+        print(f'{word_list=}')
         word_list = eval(word_list)
         if not word_list:
             await ctx.send('単語が登録されていません')
@@ -169,26 +212,41 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         for i, item in enumerate(word_list.keys(), start=1):
             await ctx.send(f'{i:2}. {item}')
 
+    @commands.command(name='roles')
+    async def _roles(self, ctx: discord):
+        roles = ctx.guild.roles
+        for role in roles:
+            await ctx.send(role)
+
     # 定期実行する関数
 
     @tasks.loop(minutes=1)
     async def periodically(self):
         # https://discordpy.readthedocs.io/ja/latest/ext/tasks/index.html
         now = datetime.now().strftime("%H:%M")
-        if now == '18:00':
+        # if now == '19:20':
+        if True:
             # conn  = db_connect()
             # c = conn.cursor()
             # c.execute("SELECT * FROM test_table")
             # for result in c.fetchall():
-            for result in db_show():
+            print(f'{db_show()=}')
+            for result in db_show(None):
+                print(f'{result=}')
                 guild_id, channel_id, keywords = result
-                guild_id, channel_id, keywords = int(guild_id), int(channel_id), eval(keywords)
+                guild_id, channel_id, keywords = int(
+                    guild_id), int(channel_id), eval(keywords)
                 channel = self.bot.get_channel(channel_id)
-                papers = self.bot.get_papers(guild_id, channel_id, keywords)
+                papers = self.get_papers(guild_id, channel_id, keywords)
             # print(result)
             # print(now)
-            channel = self.bot.get_channel(761580345090113569)
-            await channel.send(now + '時だよ')
+                channel = self.bot.get_channel(channel_id)
+                await channel.send(now + '時だよ')
+                # discord.utils.get(guild_id, )
+                ctx = self.bot.get_guild(guild_id)
+                print(f'{ctx}')
+                for paper in papers:
+                    await channel.send(paper.show(ctx))
 
     # https://qiita.com/_yushuu/items/83c51e29771530646659
     def trans(self, text) -> str:
@@ -204,9 +262,9 @@ class ArxivCheckCog(commands.Cog, name="checker"):
                 pass
         return result
 
-    # def get_paper(self, keyword) -> List[Paper]:
+    # def get_paper(self, keyword) -> list[Paper]:
 
-    def get_paper(self, guild_id: int, channel_id: int, keywords: dict) -> List[Paper]:
+    def get_papers(self, guild_id: int, channel_id: int, keywords: dict) -> Papers:
         dt_now = datetime.now(pytz.timezone('Asia/Tokyo'))
         dt_old = dt_now - timedelta(days=30)
         dt_day = dt_old.strftime('%Y%m%d')
@@ -214,13 +272,13 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         # print(dt_now, dt_old, dt_day, dt_last)
         words = list(keywords.keys())
         # role_id = keywords.values()
-        result = []
+        result = Papers(None)
         for word in words:
             q = f'all:"{word}" AND submittedDate:[{dt_day} TO {dt_last}]'
             papers = arxiv.query(
                 query=q, sort_by='submittedDate', sort_order='ascending'
             )
-            print(q)
+            # print(q)
 
             # result = []
             for paper in papers:
@@ -241,23 +299,24 @@ class ArxivCheckCog(commands.Cog, name="checker"):
     async def test_get_paper(self, ctx, arg):
         print("test run")
         await ctx.send("`test run`")
-        for paper in self.get_paper(arg):
+        for paper in self.get_papers(arg):
             await ctx.send(f'`{paper.title}`')
         await ctx.send("`test done`")
 
     @commands.command()
-    async def test_get_one_paper(self, ctx, arg):
+    async def test_get_one_paper(self, ctx: discord, arg):
         await ctx.send("`test run`")
-        paper = self.get_paper(ctx.guild.id, ctx.channel.id, {arg: 0})
-        if not paper:
+        _, _, word_list = db_show(ctx.guild.id)
+        word_list = eval(word_list)
+        papers = self.get_papers(ctx.guild.id, ctx.channel.id, {arg: word_list[arg]}) #!!!!!!
+        if not papers:
             await ctx.send("no result")
             await ctx.send("`test done`")
             return
-        paper = paper[0]
-        await ctx.send(paper)
+        paper: Paper = papers[0]
+        await ctx.send(paper.show(ctx.guild))
         await ctx.send("`test done`")
 
 
 def setup(bot):
     return bot.add_cog(ArxivCheckCog(bot))
-
