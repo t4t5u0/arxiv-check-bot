@@ -37,22 +37,21 @@ from cog.database import *
 # async def
 
 
-def my_index(l, x) -> int:
-    if x in l:
-        return l.index(x)
-    else:
-        return -1
-
-
 @dataclass
 class Paper:
+    """
+    論文クラス\n
+
+    link: str \n
+    title: str \n
+    abst: str \n
+    j_abst: str \n
+    keywords: dict # {"role1": roleid1, "role2": roleid2, ...} \n
+    """
     link: str
     title: str
     abst: str
     j_abst: str
-    # 下2つを固める
-    # role_list: list[str]
-    # keywords: Set[str]
     keywords: dict  # {"role1": roleid1, "role2": roleid2, ...}
 
     def __add__(self, other):
@@ -61,13 +60,17 @@ class Paper:
 
     # await ctx.send のときに使う
     def show(self, _guild: discord.Guild) -> str:
+        """
+        表示用の文字列を返す．\n
+        _guild: 表示対象のguild
+        """
         role_ids = self.keywords.values()
-        print(f'{self.keywords=}')
-        print(f'{role_ids=}')
-        print(f'{_guild=}')
+        # print(f'{self.keywords=}')
+        # print(f'{role_ids=}')
+        # print(f'{_guild=}')
         roles = list(filter(lambda x: x is not None,
                             [_guild.get_role(role_id) for role_id in role_ids]))
-        print(roles)
+        # print(roles)
         if not roles:
             roles_mentions = ""
         else:
@@ -80,11 +83,13 @@ class Paper:
             f'{self.j_abst}\n'
             f'{"-"*20}'
         )
-        # ロールのメンション処理を追加する
-        # role.mention
 
 
 class Papers(UserList):
+    """
+    論文のリスト\n
+    self.data: list # これが本体
+    """
 
     def __init__(self, arg: list[Paper]):
         arg = arg if arg else []
@@ -92,47 +97,61 @@ class Papers(UserList):
         self.data: list[Paper]
 
     def __add__(self, other: list[Paper]):
+        """
+        \+演算子．appendを回している
+        """
         for paper in other:
             self.append(paper)
 
     def append(self, other: Paper):
-        # self.dataから
+        """
+        Paperのlinkが重複していたらkeywordをまとめる．そうでなければ末尾に追加する
+        """
         links = [paper.link for paper in self.data]
-        if (i := my_index(links, other.link)) != -1:
+        if (i := self.link_index(links, other.link)) != -1:
             self.data[i].keywords.update(other.keywords)
         else:
             self.data.append(other)
 
+    def link_index(self, l: list[str], x: str) -> int:
+        """
+        linkが重複しているかの判定\n
+        重複していたら0オリジンのインデックスを返す\n
+        重複していなかったら-1を返す
+        """
+        if x in l:
+            return l.index(x)
+        else:
+            return -1
+
 
 class ArxivCheckCog(commands.Cog, name="checker"):
-    # guild id と　channel id  を保持しないといけない
-    # ワードごとに設定できるのが理想
+    """
+    Botのメイン部分．
+    検索する単語を追加・削除する処理と，
+    論文通知を定期実行する処理に分かれる
+    """
+
     def __init__(self, bot):
         self.bot = bot
         self.word_list: list[dict] = []
         self.guild_id_list = []
         self.data = []
 
-        # with open('./data/guild_id_list.csv') as f:
-        #     self.guild_id_list = [int(y) for x in csv.reader(f) for y in x]
-
-        # with open('./data/guild_info.json') as f:
-        #     self.data = json.load(f)
-        # self.periodically.start()
-        # self.bot = Bot(command_prefix='!')
-        # self.bot.load_extension('cog.sort_riddle')
-
     @commands.Cog.listener()
     async def on_ready(self):
+        """
+        Bot起動時に呼ばれる．
+        定期実行関数の起動を行う
+        """
         db_create()
         print('login')
-        self.periodically.start()
+        self.send_periodically.start()
         await self.bot.change_presence(activity=discord.Game(name='/help'))
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
-        guild_id = guild.id
-        db_write(guild_id)
+        db_write(guild.id)
 
     @commands.command()
     async def neko(self, ctx):
@@ -140,11 +159,15 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         await ctx.send(f'{ctx.author.mention} にゃう')
 
     @commands.command(name="set")
-    async def _set(self, ctx):
+    async def _set(self, ctx: discord):
+        """
+        論文を送信するチャンネルを設定する
+        """
         # channel_id を設定
         # db_set
-        print(ctx.guild.id, ctx.channel.id)
+        # print(ctx.guild.id, ctx.channel.id)
         db_set(ctx.guild.id, ctx.channel.id)
+        await ctx.send(f'{ctx.channel.mention}を送信対象に設定します')
 
     @commands.command(name='add')
     async def _add(self, ctx: discord, *args):
@@ -214,6 +237,9 @@ class ArxivCheckCog(commands.Cog, name="checker"):
 
     @commands.command(name='roles')
     async def _roles(self, ctx: discord):
+        """
+        ロール一覧を表示
+        """
         roles = ctx.guild.roles
         for role in roles:
             await ctx.send(role)
@@ -221,35 +247,44 @@ class ArxivCheckCog(commands.Cog, name="checker"):
     # 定期実行する関数
 
     @tasks.loop(minutes=1)
-    async def periodically(self):
+    async def send_periodically(self):
+        """
+        論文を毎日18:00に送信する
+        feature: サーバごとに送信する時間を変更する
+        """
         # https://discordpy.readthedocs.io/ja/latest/ext/tasks/index.html
         now = datetime.now().strftime("%H:%M")
-        # if now == '19:20':
-        if True:
+        if now == '18:00':
+            # if True:
             # conn  = db_connect()
             # c = conn.cursor()
             # c.execute("SELECT * FROM test_table")
             # for result in c.fetchall():
-            print(f'{db_show()=}')
+
+            # print(f'{db_show()=}')
             for result in db_show(None):
-                print(f'{result=}')
+                # ここNone渡す必要あるか？
+                # print(f'{result=}')
                 guild_id, channel_id, keywords = result
                 guild_id, channel_id, keywords = int(
                     guild_id), int(channel_id), eval(keywords)
                 channel = self.bot.get_channel(channel_id)
-                papers = self.get_papers(guild_id, channel_id, keywords)
-            # print(result)
-            # print(now)
+                papers: Papers = self.get_papers(
+                    guild_id, channel_id, keywords)
+                # print(result)
+                # print(now)
                 channel = self.bot.get_channel(channel_id)
-                await channel.send(now + '時だよ')
-                # discord.utils.get(guild_id, )
-                ctx = self.bot.get_guild(guild_id)
-                print(f'{ctx}')
+                # await channel.send(now + '時だよ')
+
+                guild: discord.Guild = self.bot.get_guild(guild_id)
+                # print(f'{ctx}')
+                paper: Paper
                 for paper in papers:
-                    await channel.send(paper.show(ctx))
+                    await channel.send(paper.show(guild))
 
     # https://qiita.com/_yushuu/items/83c51e29771530646659
     def trans(self, text) -> str:
+        "アブスト翻訳用のヘルパー関数"
         tr = Translator()
         result = ""
         while True:
@@ -257,14 +292,14 @@ class ArxivCheckCog(commands.Cog, name="checker"):
                 result = tr.translate(text, src="en", dest="ja").text
                 break
             except Exception as e:
-                #tr = Translator()
-                # tr = Translator(service_urls=['translate.googleapis.com'])
                 pass
         return result
 
-    # def get_paper(self, keyword) -> list[Paper]:
 
     def get_papers(self, guild_id: int, channel_id: int, keywords: dict) -> Papers:
+        """
+        arXivから論文から取得する関数．あとで最適化する
+        """
         dt_now = datetime.now(pytz.timezone('Asia/Tokyo'))
         dt_old = dt_now - timedelta(days=30)
         dt_day = dt_old.strftime('%Y%m%d')
@@ -308,7 +343,8 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         await ctx.send("`test run`")
         _, _, word_list = db_show(ctx.guild.id)
         word_list = eval(word_list)
-        papers = self.get_papers(ctx.guild.id, ctx.channel.id, {arg: word_list[arg]}) #!!!!!!
+        papers = self.get_papers(ctx.guild.id, ctx.channel.id, {
+                                 arg: word_list[arg]})  # !!!!!!
         if not papers:
             await ctx.send("no result")
             await ctx.send("`test done`")
