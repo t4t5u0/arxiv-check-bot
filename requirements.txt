@@ -1,0 +1,4 @@
+arxiv==0.5.3
+discord.py==1.5.1
+googletrans==4.0.0rc1
+pytz==2020.4
