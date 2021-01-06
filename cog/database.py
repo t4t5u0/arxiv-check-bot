@@ -7,6 +7,11 @@ from typing import List, Optional, Tuple, Union
 
 
 def db_create():
+    '''CREATE TABLE IF NOT EXISTS test_table (\n
+        guild_id      INTEGER PRIMARY KEY, \n
+        channel_id    INTEGER, \n
+        wordlist      JSON);''' 
+
     conn = db_connect()
     c = conn.cursor()
     c.execute(
@@ -18,6 +23,7 @@ def db_create():
 
 
 def db_connect() -> sqlite3.Connection:
+    "データベースに接続するヘルパー関数．閉じ忘れないよう"
     db_name = 'Info.db'
     conn: sqlite3.Connection = sqlite3.connect(
         db_name,  detect_types=sqlite3.PARSE_DECLTYPES)
@@ -25,6 +31,7 @@ def db_connect() -> sqlite3.Connection:
 
 
 def db_write(guild_id: int):
+    "guild_idを書き込む(主キー)．やってることはUPSERT"
     # writeというよりupsirt ?
     # guild_id を登録 これが主キー
     # set コマンド的なやつで
@@ -46,6 +53,10 @@ def db_write(guild_id: int):
 
 
 def db_update(guild_id: int, word: dict):
+    """
+    単語の登録を行う\n
+    guild_id で検索して，word_listというJSONオブジェクトをいじる
+    """
     # 単語の登録を行う
     # guild_id で検索して，word_listというJSONオブジェクトをいじる
     #
@@ -75,9 +86,10 @@ def db_update(guild_id: int, word: dict):
 
 
 def db_delete(guild_id: int, del_key: str):
-    # 単語の削除を行う
-    # guild_id で検索して，word_list からJSONオブジェクトを一部消去
-    # Discordのロールの削除は呼び出し元で行う
+    """
+    単語の削除を行う\n
+    guild_id で検索して，word_list からJSONオブジェクトを一部消去\n
+    Discordのロールの削除は呼び出し元で行う"""
 
     conn = db_connect()
     c = conn.cursor()
@@ -100,7 +112,7 @@ def db_delete(guild_id: int, del_key: str):
 
 
 def db_set(guild_id: int, channel_id: int):
-    # channel_idを設定する
+    "channel_idを設定する"
     conn = db_connect()
     c = conn.cursor()
     c.execute(
@@ -125,6 +137,8 @@ def db_set(guild_id: int, channel_id: int):
 
 def db_show(guild_id=None) -> Union[Tuple[int, int, dict], List[Tuple[int, int, dict]]]:
     """
+    guild_idをもとに\n
+    `guild_id, channel_id, json_obj` を返す\n
     guild_idを設定しなかったら全部返す．
     """
     # 生のレコードを全部返す
