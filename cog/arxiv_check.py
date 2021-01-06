@@ -11,9 +11,9 @@ from typing import Optional
 import arxiv
 import discord
 import pytz
-from discord import guild
+# from discord import guild
 from discord.ext import commands, tasks
-from discord.ext.commands import Bot
+# from discord.ext.commands import Bot
 from googletrans import Translator
 
 from cog.database import *
@@ -60,21 +60,25 @@ class Paper:
             self.keywords += other.keywords
 
     # await ctx.send のときに使う
-    def show(self, ctx: discord) -> str:
+    def show(self, _guild: discord.Guild) -> str:
         role_ids = self.keywords.values()
-        roles: Optional[list[discord.Role]] = [discord.utils.get(
-            ctx.guild.roles, id=role_id) for role_id in role_ids]
+        print(f'{self.keywords=}')
+        print(f'{role_ids=}')
+        print(f'{_guild=}')
+        roles = list(filter(lambda x: x is not None,
+                            [_guild.get_role(role_id) for role_id in role_ids]))
         print(roles)
-        if roles[0] is None:
+        if not roles:
             roles_mentions = ""
         else:
             roles_mentions: list[str] = [role.mention for role in roles]
         mentions_string = ' '.join(roles_mentions)
         return (
-            f'{self.title}\n'
+            f'**{self.title}**\n'
+            f'{mentions_string}\n'
             f'{self.link}\n'
             f'{self.j_abst}\n'
-            f'{mentions_string}'
+            f'{"-"*20}'
         )
         # ロールのメンション処理を追加する
         # role.mention
@@ -200,7 +204,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         """検索対象の単語一覧を表示"""
         # TODO:
         _, _, word_list = db_show(ctx.guild.id)
-        print(word_list)
+        print(f'{word_list=}')
         word_list = eval(word_list)
         if not word_list:
             await ctx.send('単語が登録されていません')
@@ -208,18 +212,27 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         for i, item in enumerate(word_list.keys(), start=1):
             await ctx.send(f'{i:2}. {item}')
 
+    @commands.command(name='roles')
+    async def _roles(self, ctx: discord):
+        roles = ctx.guild.roles
+        for role in roles:
+            await ctx.send(role)
+
     # 定期実行する関数
 
     @tasks.loop(minutes=1)
     async def periodically(self):
         # https://discordpy.readthedocs.io/ja/latest/ext/tasks/index.html
         now = datetime.now().strftime("%H:%M")
-        if now == '18:00':
+        # if now == '19:20':
+        if True:
             # conn  = db_connect()
             # c = conn.cursor()
             # c.execute("SELECT * FROM test_table")
             # for result in c.fetchall():
-            for result in db_show():
+            print(f'{db_show()=}')
+            for result in db_show(None):
+                print(f'{result=}')
                 guild_id, channel_id, keywords = result
                 guild_id, channel_id, keywords = int(
                     guild_id), int(channel_id), eval(keywords)
@@ -227,8 +240,13 @@ class ArxivCheckCog(commands.Cog, name="checker"):
                 papers = self.get_papers(guild_id, channel_id, keywords)
             # print(result)
             # print(now)
-            channel = self.bot.get_channel(761580345090113569)
-            await channel.send(now + '時だよ')
+                channel = self.bot.get_channel(channel_id)
+                await channel.send(now + '時だよ')
+                # discord.utils.get(guild_id, )
+                ctx = self.bot.get_guild(guild_id)
+                print(f'{ctx}')
+                for paper in papers:
+                    await channel.send(paper.show(ctx))
 
     # https://qiita.com/_yushuu/items/83c51e29771530646659
     def trans(self, text) -> str:
@@ -260,7 +278,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
             papers = arxiv.query(
                 query=q, sort_by='submittedDate', sort_order='ascending'
             )
-            print(q)
+            # print(q)
 
             # result = []
             for paper in papers:
@@ -286,15 +304,17 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         await ctx.send("`test done`")
 
     @commands.command()
-    async def test_get_one_paper(self, ctx, arg):
+    async def test_get_one_paper(self, ctx: discord, arg):
         await ctx.send("`test run`")
-        papers = self.get_papers(ctx.guild.id, ctx.channel.id, {arg: 0})
+        _, _, word_list = db_show(ctx.guild.id)
+        word_list = eval(word_list)
+        papers = self.get_papers(ctx.guild.id, ctx.channel.id, {arg: word_list[arg]}) #!!!!!!
         if not papers:
             await ctx.send("no result")
             await ctx.send("`test done`")
             return
         paper: Paper = papers[0]
-        await ctx.send(paper.show(ctx))
+        await ctx.send(paper.show(ctx.guild))
         await ctx.send("`test done`")
 
 
