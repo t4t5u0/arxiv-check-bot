@@ -216,22 +216,13 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         単語が一致しなかったら何もしない
         ロールが見つからなかった何もしない
         """
-        for role_name in args:
-            result, role = db_delete(ctx.guild, role_name)
-            if (result, role) == (True, True):
-                await role.role_delete()
-                await ctx.send(f'{role_name} を削除しました')
-            elif (result, role) == (True, False):
-                await ctx.send(f'{role_name} を削除しました')
-            else:
-                await ctx.send(f'{role_name} というワードは存在しません')
 
         for role_name in args:
             result, role = db_delete(ctx.guild, role_name)
             if result:
                 await ctx.send(f'{role_name} を削除しました')
                 if role:
-                    await role.role_delete()
+                    await role.delete()
                 continue
             await ctx.send(f'{role_name} というワードは存在しません')
 

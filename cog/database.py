@@ -69,17 +69,14 @@ def db_update(guild_id: int, word: dict):
         FROM test_table
         WHERE guild_id = ?''', (guild_id,))
     x = c.fetchone()[0]
-    print(f'{x=}')
     json_obj = None
     if x is None:
         json_obj = "{}"
     else:
         json_obj = (x if x else '{}')
-    print(f'{json_obj=}')
     # json_objの加工
     json_obj: dict = eval(json_obj)
     json_obj.update(word)
-    print(json_obj)
     c.execute('''UPDATE test_table 
             SET wordlist = ?
             WHERE guild_id = ?''', (str(json_obj), guild_id))
@@ -101,20 +98,21 @@ def db_delete(guild: discord.Guild, del_key: str):
         FROM test_table
         WHERE guild_id = ?''', (guild.id,))
     json_obj = c.fetchone()
-
+    # 辞書型に戻す
+    json_obj: dict = eval(json_obj[0])
     role_id: int
     try:
-        _, role_id, _ = json_obj.pop(del_key)
+        role_id = json_obj.pop(del_key)
     except KeyError:
         conn.close()
         return False, None
     c.execute(
         '''UPDATE test_table
-        SET wordlist = ?''', (json_obj,))
+        SET wordlist = ?''', (str(json_obj),))
     conn.commit()
     conn.close()
     role: Optional[discord.Role] = discord.utils.get(
-                guild.roles, name=role_id)
+                guild.roles, id=role_id)
     return True, role
 
 
