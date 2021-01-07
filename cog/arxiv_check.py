@@ -209,24 +209,28 @@ class ArxivCheckCog(commands.Cog, name="checker"):
             '[' + ', '.join(role_name for role_name in arg_dict) + ']'
         )
 
-    @commands.command()
-    async def delete(self, ctx, *args):
+    @commands.command(name="delete")
+    async def _delete(self, ctx, *args):
         """
-        検索対象の単語を消す
-        一致しなかったらそのまま
+        検索対象の単語とロールを削除する
+        単語が一致しなかったら何もしない
+        ロールが見つからなかった何もしない
         """
-        for arg in args:
-            result = db_delete(ctx.guild.id, arg)
+
+        for role_name in args:
+            result, role = db_delete(ctx.guild, role_name)
             if result:
-                await ctx.send(f'{arg} を削除しました')
-            else:
-                await ctx.send(f'{arg} というワードは存在しません')
+                await ctx.send(f'{role_name} を削除しました')
+                if role:
+                    await role.delete()
+                continue
+            await ctx.send(f'{role_name} というワードは存在しません')
 
     @commands.command()
     async def show(self, ctx):
         """検索対象の単語一覧を表示"""
         # TODO:
-        _, _, word_list = db_show(ctx.guild.id)
+        _, _, word_list = db_show(ctx.guild.id)[0]
         print(f'{word_list=}')
         word_list = eval(word_list)
         if not word_list:
@@ -294,7 +298,6 @@ class ArxivCheckCog(commands.Cog, name="checker"):
             except Exception as e:
                 pass
         return result
-
 
     def get_papers(self, guild_id: int, channel_id: int, keywords: dict) -> Papers:
         """
