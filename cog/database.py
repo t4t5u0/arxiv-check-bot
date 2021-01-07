@@ -1,6 +1,8 @@
 import sqlite3
 from typing import List, Optional, Tuple, Union
 
+import discord
+
 # sqlite3.register_adapter(list, lambda l: ';'.join([i for i in l]))
 # sqlite3.register_converter(
 #     'LIST', lambda s: [item.decode('utf-8') for item in s.split(bytes(b';'))])
@@ -10,7 +12,7 @@ def db_create():
     '''CREATE TABLE IF NOT EXISTS test_table (\n
         guild_id      INTEGER PRIMARY KEY, \n
         channel_id    INTEGER, \n
-        wordlist      JSON);''' 
+        wordlist      JSON);'''
 
     conn = db_connect()
     c = conn.cursor()
@@ -85,7 +87,8 @@ def db_update(guild_id: int, word: dict):
     conn.close()
 
 
-def db_delete(guild_id: int, del_key: str):
+# -> tuple[Literal[False], None] | tuple[Literal[True], discord.Role]:
+def db_delete(guild: discord.Guild, del_key: str):
     """
     単語の削除を行う\n
     guild_id で検索して，word_list からJSONオブジェクトを一部消去\n
@@ -96,19 +99,23 @@ def db_delete(guild_id: int, del_key: str):
     c.execute(
         '''SELECT wordlist
         FROM test_table
-        WHERE guild_id = ?''', (guild_id,))
+        WHERE guild_id = ?''', (guild.id,))
     json_obj = c.fetchone()
+
+    role_id: int
     try:
-        json_obj.pop(del_key)
+        _, role_id, _ = json_obj.pop(del_key)
     except KeyError:
         conn.close()
-        return False
+        return False, None
     c.execute(
         '''UPDATE test_table
         SET wordlist = ?''', (json_obj,))
     conn.commit()
     conn.close()
-    return True
+    role: Optional[discord.Role] = discord.utils.get(
+                guild.roles, name=role_id)
+    return True, role
 
 
 def db_set(guild_id: int, channel_id: int):
@@ -135,7 +142,8 @@ def db_set(guild_id: int, channel_id: int):
     conn.close()
 
 
-def db_show(guild_id=None) -> Union[Tuple[int, int, dict], List[Tuple[int, int, dict]]]:
+# -> Union[Tuple[int, int, dict], List[Tuple[int, int, dict]]]:
+def db_show(guild_id=None):
     """
     guild_idをもとに\n
     `guild_id, channel_id, json_obj` を返す\n
