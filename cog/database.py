@@ -24,7 +24,7 @@ def db_create():
 
 def db_connect() -> sqlite3.Connection:
     "データベースに接続するヘルパー関数．閉じ忘れないよう"
-    db_name = 'Info.db'
+    db_name = './data/Info.db'
     conn: sqlite3.Connection = sqlite3.connect(
         db_name,  detect_types=sqlite3.PARSE_DECLTYPES)
     return conn
