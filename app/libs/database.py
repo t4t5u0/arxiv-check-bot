@@ -47,8 +47,8 @@ def db_write(guild_id: int):
         c.execute(
             """INSERT INTO test_table(guild_id) VALUES(?)""", (guild_id,))
     conn.commit()
-    for item in c.execute('SELECT * FROM test_table'):
-        print(item)
+    # for item in c.execute('SELECT * FROM test_table'):
+    #     print(item)
     conn.close()
 
 
@@ -121,7 +121,7 @@ def db_set(guild_id: int, channel_id: int):
     c.execute(
         "SELECT guild_id FROM test_table WHERE guild_id = ?", (guild_id,))
     tmp = c.fetchone()
-    print(f'{tmp=}')
+    # print(f'{tmp=}')
     if tmp is None:
         c.execute(
             '''INSERT INTO test_table(guild_id, channel_id)
@@ -133,8 +133,8 @@ def db_set(guild_id: int, channel_id: int):
             WHERE guild_id = ?''',
             (channel_id, guild_id))
     conn.commit()
-    for item in c.execute('SELECT * FROM test_table'):
-        print(f'{item=}')
+    # for item in c.execute('SELECT * FROM test_table'):
+        # print(f'{item=}')
     conn.close()
 
 

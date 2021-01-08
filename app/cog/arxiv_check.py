@@ -228,7 +228,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         """検索対象の単語一覧を表示"""
         # TODO:
         _, _, word_list = db_show(ctx.guild.id)[0]
-        print(f'{word_list=}')
+        # print(f'{word_list=}')
         word_list = eval(word_list)
         if not word_list:
             await ctx.send('単語が登録されていません')
