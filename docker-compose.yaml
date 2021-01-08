@@ -1,0 +1,15 @@
+version: "3"
+services:
+  arxiv-checker:
+    container_name: app
+    build: ./app
+    tty: true
+    volumes:
+      - ./app:/app
+    command: >
+      bash -c "cd /app && 
+      echo -e '[TOKEN]\ntoken=ここにトークンを挿入' > config.ini &&
+      python main.py"
+    # command: >
+    #   bash -c "cd /app && 
+    #   python main.py"

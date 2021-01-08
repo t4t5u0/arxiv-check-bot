@@ -16,7 +16,11 @@ from discord.ext import commands, tasks
 # from discord.ext.commands import Bot
 from googletrans import Translator
 
-from cog.database import *
+try:
+    from app.libs.database import *
+except ModuleNotFoundError:
+    from libs.database import *
+
 
 # 検索するべき単語の追加削除
 # 単語リストが更新されたとき，それに付随するロールを作成する

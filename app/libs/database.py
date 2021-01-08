@@ -1,11 +1,17 @@
 import sqlite3
 from typing import List, Optional, Tuple, Union
+from pathlib import Path
 
 import discord
 
-# sqlite3.register_adapter(list, lambda l: ';'.join([i for i in l]))
-# sqlite3.register_converter(
-#     'LIST', lambda s: [item.decode('utf-8') for item in s.split(bytes(b';'))])
+
+def db_connect() -> sqlite3.Connection:
+    "データベースに接続するヘルパー関数．閉じ忘れないよう"
+    path = Path.cwd().glob('**/Info.db')
+    db_name = str(list(path)[0])
+    conn: sqlite3.Connection = sqlite3.connect(
+        db_name,  detect_types=sqlite3.PARSE_DECLTYPES)
+    return conn
 
 
 def db_create():
@@ -22,14 +28,6 @@ def db_create():
         channel_id    INTEGER,
         wordlist      JSON);''')
     conn.commit()
-
-
-def db_connect() -> sqlite3.Connection:
-    "データベースに接続するヘルパー関数．閉じ忘れないよう"
-    db_name = './data/Info.db'
-    conn: sqlite3.Connection = sqlite3.connect(
-        db_name,  detect_types=sqlite3.PARSE_DECLTYPES)
-    return conn
 
 
 def db_write(guild_id: int):
@@ -112,7 +110,7 @@ def db_delete(guild: discord.Guild, del_key: str):
     conn.commit()
     conn.close()
     role: Optional[discord.Role] = discord.utils.get(
-                guild.roles, id=role_id)
+        guild.roles, id=role_id)
     return True, role
 
 

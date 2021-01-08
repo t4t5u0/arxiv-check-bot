@@ -1,3 +1,4 @@
+from pathlib import Path
 import configparser
 
 import discord
@@ -21,9 +22,9 @@ class UserHelp(commands.DefaultHelpCommand):
             f'各コマンドの説明: {prefix}help <コマンド名>\n')
 
 
-
+path = Path.cwd().glob('**/config.ini')
 config = configparser.ConfigParser()
-config.read('./config.ini')
+config.read(path)
 TOKEN = config['TOKEN']['token']
 
 prefix = '/'
