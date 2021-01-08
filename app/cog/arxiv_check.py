@@ -16,7 +16,7 @@ from discord.ext import commands, tasks
 # from discord.ext.commands import Bot
 from googletrans import Translator
 
-from cog.database import *
+from app.lib.database import *
 
 # 検索するべき単語の追加削除
 # 単語リストが更新されたとき，それに付随するロールを作成する
