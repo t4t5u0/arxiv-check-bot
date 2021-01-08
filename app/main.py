@@ -23,7 +23,7 @@ class UserHelp(commands.DefaultHelpCommand):
 
 
 p = Path.cwd()
-path = list(p.glob('**/config.ini'))
+path = p.glob('**/config.ini')
 print(path)
 
 config = configparser.ConfigParser()
