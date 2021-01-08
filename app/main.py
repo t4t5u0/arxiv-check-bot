@@ -22,10 +22,7 @@ class UserHelp(commands.DefaultHelpCommand):
             f'各コマンドの説明: {prefix}help <コマンド名>\n')
 
 
-p = Path.cwd()
-path = p.glob('**/config.ini')
-print(path)
-
+path = Path.cwd().glob('**/config.ini')
 config = configparser.ConfigParser()
 config.read(path)
 TOKEN = config['TOKEN']['token']
