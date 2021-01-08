@@ -289,6 +289,9 @@ class ArxivCheckCog(commands.Cog, name="checker"):
                 paper: Paper
                 for paper in papers:
                     await channel.send(paper.show(guild))
+    @commands.command()
+    async def issue(self, ctx):
+        await ctx.send('https://github.com/t4t5u0/arxiv-check-bot/issues')
 
     # https://qiita.com/_yushuu/items/83c51e29771530646659
     def trans(self, text) -> str:
