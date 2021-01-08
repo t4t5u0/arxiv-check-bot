@@ -11,5 +11,5 @@ services:
       echo -e '[TOKEN]\ntoken=ここにトークンを挿入' > config.ini &&
       python main.py"
     # command: >
-    #   bash -c "cd /app && 
+    #   bash - c "cd /app && 
     #   python main.py"
