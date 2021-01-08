@@ -1,8 +1,3 @@
-import configparser
-import csv
-import json
-import sqlite3
-import time
 from collections import UserList
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -11,9 +6,7 @@ from typing import Optional
 import arxiv
 import discord
 import pytz
-# from discord import guild
 from discord.ext import commands, tasks
-# from discord.ext.commands import Bot
 from googletrans import Translator
 
 try:
