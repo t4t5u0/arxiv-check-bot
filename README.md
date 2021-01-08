@@ -37,6 +37,7 @@ $ nohup python main.py &
 ```
 
 ## Commands
+```
 checker:  
   add                検索したい単語を追加  
   delete             検索対象の単語とロールを削除する  
@@ -48,5 +49,6 @@ other:
   help               コマンド一覧と簡単な説明を表示  
   
 このBotは`arxiv.org`に新規投稿された論文をチェックするものです  
-  
+ 
 各コマンドの説明: /help <コマンド名>  
+```
