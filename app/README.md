@@ -14,7 +14,18 @@ arXivから，登録された単語を検索し，通知する Discord bot
 
 1. [Discord Developer Portal — My Applications](https://discord.com/developers/applications) で，アプリケーションを作る．Bot permission で `Manage Roles` を設定する必要があるので注意する
 
-2. 以下のコマンドを叩く  
+2. 1 docker-compose を使用する場合
+```console
+$ git clone https://github.com/t4t5u0/arxiv-check-bot
+$ cd arxiv-check-bot
+```
+docker-compose.yaml にシークレットトークンを書き込む
+
+```console
+$ docker-compose up -d
+```
+
+2. 2 docker-compose を使用しない場合  
 Python<=3.9 が必要です
 
 ```console
