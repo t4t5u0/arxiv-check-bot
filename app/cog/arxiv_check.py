@@ -254,7 +254,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         feature: サーバごとに送信する時間を変更する
         """
         # https://discordpy.readthedocs.io/ja/latest/ext/tasks/index.html
-        now = datetime.now().strftime("%H:%M")
+        now = datetime.now(pytz.timezone('Asia/Tokyo')).strftime("%H:%M")
         if now == '18:00':
             # if True:
             # conn  = db_connect()
@@ -308,7 +308,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         dt_day = dt_old.strftime('%Y%m%d')
         dt_last = dt_day + '235959'
         # print(dt_now, dt_old, dt_day, dt_last)
-        words = list(keywords.keys())
+        # words = list(keywords.keys())
         # role_id = keywords.values()
         result = Papers(None)
         for word, value in keywords.items():
