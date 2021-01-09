@@ -304,7 +304,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         arXivから論文から取得する関数．あとで最適化する
         """
         dt_now = datetime.now(pytz.timezone('Asia/Tokyo'))
-        dt_old = dt_now - timedelta(days=30)
+        dt_old = dt_now - timedelta(days=1)
         dt_day = dt_old.strftime('%Y%m%d')
         dt_last = dt_day + '235959'
         # print(dt_now, dt_old, dt_day, dt_last)
