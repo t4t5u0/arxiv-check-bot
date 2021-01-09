@@ -254,13 +254,9 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         feature: サーバごとに送信する時間を変更する
         """
         # https://discordpy.readthedocs.io/ja/latest/ext/tasks/index.html
-        now = datetime.now().strftime("%H:%M")
+        now = datetime.now(pytz.timezone('Asia/Tokyo')).strftime("%H:%M")
         if now == '18:00':
-            # if True:
-            # conn  = db_connect()
-            # c = conn.cursor()
-            # c.execute("SELECT * FROM test_table")
-            # for result in c.fetchall():
+        # if True:
 
             # print(f'{db_show()=}')
             for result in db_show(None):
@@ -304,14 +300,14 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         arXivから論文から取得する関数．あとで最適化する
         """
         dt_now = datetime.now(pytz.timezone('Asia/Tokyo'))
-        dt_old = dt_now - timedelta(days=30)
+        dt_old = dt_now - timedelta(days=1)
         dt_day = dt_old.strftime('%Y%m%d')
         dt_last = dt_day + '235959'
         # print(dt_now, dt_old, dt_day, dt_last)
-        words = list(keywords.keys())
+        # words = list(keywords.keys())
         # role_id = keywords.values()
         result = Papers(None)
-        for word in words:
+        for word, value in keywords.items():
             q = f'all:"{word}" AND submittedDate:[{dt_day} TO {dt_last}]'
             papers = arxiv.query(
                 query=q, sort_by='submittedDate', sort_order='ascending'
@@ -327,8 +323,8 @@ class ArxivCheckCog(commands.Cog, name="checker"):
                     title=paper["title"],
                     abst=abst,
                     j_abst=self.trans(abst),
-                    # roles=keyword.values(), # DBから拾ってきたやつをここに入れる
-                    keywords=keywords
+                    # 1つ分を挿入する．全部挿入してたので全ロールをメンションしてた
+                    keywords={word: value}
                 )
                 result.append(p)
         return result
