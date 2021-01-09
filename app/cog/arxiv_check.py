@@ -311,7 +311,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         words = list(keywords.keys())
         # role_id = keywords.values()
         result = Papers(None)
-        for word in words:
+        for word, value in keywords.items():
             q = f'all:"{word}" AND submittedDate:[{dt_day} TO {dt_last}]'
             papers = arxiv.query(
                 query=q, sort_by='submittedDate', sort_order='ascending'
@@ -327,8 +327,8 @@ class ArxivCheckCog(commands.Cog, name="checker"):
                     title=paper["title"],
                     abst=abst,
                     j_abst=self.trans(abst),
-                    # roles=keyword.values(), # DBから拾ってきたやつをここに入れる
-                    keywords=keywords
+                    # 1つ分を挿入する．全部挿入してたので全ロールをメンションしてた
+                    keywords={word: value}
                 )
                 result.append(p)
         return result
