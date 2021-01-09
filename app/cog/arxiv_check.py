@@ -256,11 +256,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         # https://discordpy.readthedocs.io/ja/latest/ext/tasks/index.html
         now = datetime.now(pytz.timezone('Asia/Tokyo')).strftime("%H:%M")
         if now == '18:00':
-            # if True:
-            # conn  = db_connect()
-            # c = conn.cursor()
-            # c.execute("SELECT * FROM test_table")
-            # for result in c.fetchall():
+        # if True:
 
             # print(f'{db_show()=}')
             for result in db_show(None):
