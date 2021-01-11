@@ -272,7 +272,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
                 # print(result)
                 # print(now)
                 channel = self.bot.get_channel(channel_id)
-                await channel.send(now + '時だよ')
+                # await channel.send(now + '時だよ')
 
                 guild: discord.Guild = self.bot.get_guild(guild_id)
                 # print(f'{ctx}')
