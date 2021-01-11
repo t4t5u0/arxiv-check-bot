@@ -268,6 +268,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
                 channel = self.bot.get_channel(channel_id)
                 papers: Papers = self.get_papers(
                     guild_id, channel_id, keywords)
+                print(len(result))
                 # print(result)
                 # print(now)
                 channel = self.bot.get_channel(channel_id)
@@ -278,6 +279,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
                 paper: Paper
                 for paper in papers:
                     await channel.send(paper.show(guild))
+
     @commands.command()
     async def issue(self, ctx):
         await ctx.send('https://github.com/t4t5u0/arxiv-check-bot/issues')
@@ -300,10 +302,11 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         arXivから論文から取得する関数．あとで最適化する
         """
         dt_now = datetime.now(pytz.timezone('Asia/Tokyo'))
-        dt_old = dt_now - timedelta(days=1)
+        dt_old = dt_now - timedelta(days=1) # 1日前
         dt_day = dt_old.strftime('%Y%m%d')
         dt_last = dt_day + '235959'
-        # print(dt_now, dt_old, dt_day, dt_last)
+        # print(dt_now, dt_old)
+        # print(dt_day, dt_last)
         # words = list(keywords.keys())
         # role_id = keywords.values()
         result = Papers(None)
@@ -312,6 +315,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
             papers = arxiv.query(
                 query=q, sort_by='submittedDate', sort_order='ascending'
             )
+            
             # print(q)
 
             # result = []
@@ -340,7 +344,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
     @commands.command()
     async def test_get_one_paper(self, ctx: discord, arg):
         await ctx.send("`test run`")
-        _, _, word_list = db_show(ctx.guild.id)
+        _, _, word_list = db_show(ctx.guild.id)[0]
         word_list = eval(word_list)
         papers = self.get_papers(ctx.guild.id, ctx.channel.id, {
                                  arg: word_list[arg]})  # !!!!!!
