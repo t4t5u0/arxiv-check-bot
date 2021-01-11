@@ -8,7 +8,7 @@ services:
       - ./app:/app
     command: >
       bash -c "cd /app && 
-      echo -e '[TOKEN]\ntoken=ここにトークンを挿入' > config.ini &&
+      echo -e '[TOKEN]\ntoken=NzkxOTE5MjA3NzM3NzIwODYy.X-WKPA.nu8iXoY0gf11q0kr-FgG5PIKFWs' > config.ini &&
       python main.py"
     # command: >
     #   bash - c "cd /app && 
