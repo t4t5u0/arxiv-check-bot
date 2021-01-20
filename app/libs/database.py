@@ -1,5 +1,5 @@
 import sqlite3
-from typing import List, Optional, Tuple, Union
+from typing import List, Literal, Optional, Tuple, Union
 from pathlib import Path
 
 import discord
@@ -82,8 +82,7 @@ def db_update(guild_id: int, word: dict):
     conn.close()
 
 
-# -> tuple[Literal[False], None] | tuple[Literal[True], discord.Role]:
-def db_delete(guild: discord.Guild, del_key: str):
+def db_delete(guild: discord.Guild, del_key: str) -> Union[tuple[Literal[False], None], tuple[Literal[True], Optional[discord.Role]]]:
     """
     単語の削除を行う\n
     guild_id で検索して，word_list からJSONオブジェクトを一部消去\n
@@ -134,15 +133,14 @@ def db_set(guild_id: int, channel_id: int):
             (channel_id, guild_id))
     conn.commit()
     # for item in c.execute('SELECT * FROM test_table'):
-        # print(f'{item=}')
+    # print(f'{item=}')
     conn.close()
 
 
-# -> Union[Tuple[int, int, dict], List[Tuple[int, int, dict]]]:
-def db_show(guild_id=None):
+def db_show(guild_id=None) -> List[dict]:
     """
     guild_idをもとに\n
-    `guild_id, channel_id, json_obj` を返す\n
+    `guild_id: int, channel_id: int , json_obj: str(dict)` を返す\n
     guild_idを設定しなかったら全部返す．
     """
     # 生のレコードを全部返す
@@ -152,7 +150,7 @@ def db_show(guild_id=None):
         c.execute('SELECT * FROM test_table')
     else:
         c.execute('SELECT * FROM test_table WHERE guild_id = ?', (guild_id,))
-    result: Union[dict, list[dict]] = c.fetchall()
+    result: list[dict] = c.fetchall()
     conn.close()
     return result
 

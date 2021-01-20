@@ -13,7 +13,7 @@ class UserHelp(commands.DefaultHelpCommand):
         self.no_category = 'other'
         self.command_attrs['help'] = 'コマンド一覧と簡単な説明を表示'
 
-    def command_not_found(self, string):
+    def command_not_found(self, string: str):
         return f'{string} というコマンドは見つかりませんでした'
 
     def get_ending_note(self):

@@ -69,7 +69,7 @@ class Paper:
                             [_guild.get_role(role_id) for role_id in role_ids]))
         # print(roles)
         if not roles:
-            roles_mentions = ""
+            roles_mentions = [""]
         else:
             roles_mentions: list[str] = [role.mention for role in roles]
         mentions_string = ' '.join(roles_mentions)
@@ -129,7 +129,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
     論文通知を定期実行する処理に分かれる
     """
 
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.word_list: list[dict] = []
         self.guild_id_list = []
@@ -147,32 +147,35 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         await self.bot.change_presence(activity=discord.Game(name='/help'))
 
     @commands.Cog.listener()
-    async def on_guild_join(self, guild):
+    async def on_guild_join(self, guild: discord.Guild):
         db_write(guild.id)
 
     @commands.command()
-    async def neko(self, ctx):
+    async def neko(self, ctx: commands.Context):
         """にゃうと返す"""
-        await ctx.send(f'{ctx.author.mention} にゃう')
+        _author: Union[discord.User, discord.Member] = ctx.author
+        await ctx.send(f'{_author.mention} にゃう')
 
     @commands.command(name="set")
-    async def _set(self, ctx: discord):
+    async def _set(self, ctx: commands.Context):
         """
         論文を送信するチャンネルを設定する
         """
         # channel_id を設定
         # db_set
         # print(ctx.guild.id, ctx.channel.id)
-        db_set(ctx.guild.id, ctx.channel.id)
-        await ctx.send(f'{ctx.channel.mention}を送信対象に設定します')
+        _guild: Optional[discord.Guild] = ctx.guild
+        _channel: Optional[discord.TextChannel] = ctx.channel
+        db_set(_guild.id, _channel.id)
+        await ctx.send(f'{_channel.mention}を送信対象に設定します')
 
     @commands.command(name='add')
-    async def _add(self, ctx: discord, *args):
+    async def _add(self, ctx: commands.Context, *args):
         """
         検索したい単語を追加
         追加したい単語と同名のロールを作成し，メンションによって通知が送信されるようにします
         """
-        _guild = ctx.guild
+        _guild: Optional[discord.Guild] = ctx.guild
         # await ctx.send(f'{_guild.name}, {_guild.id}')
 
         # async def role(self, x, guild):
@@ -185,10 +188,12 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         for arg in args:
             # ここでロールの存在チェックをしないと無限にロールが生成される
             role: Optional[discord.Role] = discord.utils.get(
-                ctx.guild.roles, name=arg)
+                _guild.roles, name=arg)
             # ロールが存在しなかったら
             if role is None:
                 role: discord.Role = await _guild.create_role(name=arg, mentionable=True)
+            # Noneチェックをしたので，Optional を外せる
+            role: discord.Role
             # メンションできない場合
             if not role.mentionable:
                 pass
@@ -196,7 +201,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
             # x = {"role_name": role.name, "role_id": role.id}
             x = {role.name: role.id}
             arg_dict.append(role.name)
-            db_update(ctx.guild.id, x)
+            db_update(_guild.id, x)
 
         # arg_dict = [{"key":x, "role": r} for x in args if (r := self.role(x, _guild)) is not None]
         # self.word_list.append(arg_dict)
@@ -207,7 +212,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         )
 
     @commands.command(name="delete")
-    async def _delete(self, ctx, *args):
+    async def _delete(self, ctx: commands.Context, *args):
         """
         検索対象の単語とロールを削除する
         単語が一致しなかったら何もしない
@@ -215,6 +220,8 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         """
 
         for role_name in args:
+            result: bool
+            role: Optional[discord.Role]
             result, role = db_delete(ctx.guild, role_name)
             if result:
                 await ctx.send(f'{role_name} を削除しました')
@@ -224,12 +231,12 @@ class ArxivCheckCog(commands.Cog, name="checker"):
             await ctx.send(f'{role_name} というワードは存在しません')
 
     @commands.command()
-    async def show(self, ctx):
+    async def show(self, ctx: commands.Context):
         """検索対象の単語一覧を表示"""
         # TODO:
         _, _, word_list = db_show(ctx.guild.id)[0]
         # print(f'{word_list=}')
-        word_list = eval(word_list)
+        word_list: dict = eval(word_list)
         if not word_list:
             await ctx.send('単語が登録されていません')
             return
@@ -237,13 +244,16 @@ class ArxivCheckCog(commands.Cog, name="checker"):
             await ctx.send(f'{i:2}. {item}')
 
     @commands.command(name='roles')
-    async def _roles(self, ctx: discord):
+    async def _roles(self, ctx: commands.Context):
         """
         ロール一覧を表示
         """
-        roles = ctx.guild.roles
-        for role in roles:
-            await ctx.send(role)
+
+        _guild: Optional[discord.Guild] = ctx.guild
+        if _guild:
+            roles: list[discord.Role] = _guild.roles
+            for role in roles:
+                await ctx.send(role)
 
     # 定期実行する関数
 
@@ -256,7 +266,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         # https://discordpy.readthedocs.io/ja/latest/ext/tasks/index.html
         now = datetime.now(pytz.timezone('Asia/Tokyo')).strftime("%H:%M")
         if now == '18:00':
-        # if True:
+            # if True:
 
             # print(f'{db_show()=}')
             for result in db_show(None):
@@ -265,15 +275,16 @@ class ArxivCheckCog(commands.Cog, name="checker"):
                 guild_id, channel_id, keywords = result
                 guild_id, channel_id, keywords = int(
                     guild_id), int(channel_id), eval(keywords)
+                keywords: dict
                 channel = self.bot.get_channel(channel_id)
                 papers: Papers = self.get_papers(
                     guild_id, channel_id, keywords)
-                print(len(result))
+                # print(len(result))
                 # print(result)
                 # print(now)
-                channel = self.bot.get_channel(channel_id)
-                # await channel.send(now + '時だよ')
 
+                channel: discord.TextChannel = self.bot.get_channel(channel_id)
+                # await channel.send(now + '時だよ')
                 guild: discord.Guild = self.bot.get_guild(guild_id)
                 # print(f'{ctx}')
                 paper: Paper
@@ -281,17 +292,17 @@ class ArxivCheckCog(commands.Cog, name="checker"):
                     await channel.send(paper.show(guild))
 
     @commands.command()
-    async def issue(self, ctx):
+    async def issue(self, ctx: commands.Context):
         await ctx.send('https://github.com/t4t5u0/arxiv-check-bot/issues')
 
     # https://qiita.com/_yushuu/items/83c51e29771530646659
-    def trans(self, text) -> str:
+    def trans(self, text: str) -> str:
         "アブスト翻訳用のヘルパー関数"
         tr = Translator()
         result = ""
         while True:
             try:
-                result = tr.translate(text, src="en", dest="ja").text
+                result: str = tr.translate(text, src="en", dest="ja").text
                 break
             except Exception as e:
                 pass
@@ -302,7 +313,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         arXivから論文から取得する関数．あとで最適化する
         """
         dt_now = datetime.now(pytz.timezone('Asia/Tokyo'))
-        dt_old = dt_now - timedelta(days=1) # 1日前
+        dt_old = dt_now - timedelta(days=1)  # 1日前
         dt_day = dt_old.strftime('%Y%m%d')
         dt_last = dt_day + '235959'
         # print(dt_now, dt_old)
@@ -315,7 +326,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
             papers = arxiv.query(
                 query=q, sort_by='submittedDate', sort_order='ascending'
             )
-            
+
             # print(q)
 
             # result = []
@@ -334,7 +345,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         return result
 
     @commands.command()
-    async def test_get_paper(self, ctx, arg):
+    async def test_get_paper(self, ctx: commands.Context, arg):
         print("test run")
         await ctx.send("`test run`")
         for paper in self.get_papers(arg):
@@ -342,11 +353,13 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         await ctx.send("`test done`")
 
     @commands.command()
-    async def test_get_one_paper(self, ctx: discord, arg):
+    async def test_get_one_paper(self, ctx: commands.Context, arg: str):
+        _guild: Optional[discord.Guild] = ctx.guild
+        _channel: Optional[discord.TextChannel] = ctx.channel
         await ctx.send("`test run`")
-        _, _, word_list = db_show(ctx.guild.id)[0]
-        word_list = eval(word_list)
-        papers = self.get_papers(ctx.guild.id, ctx.channel.id, {
+        _, _, word_list = db_show(_guild.id)[0]
+        word_list: dict = eval(word_list)
+        papers = self.get_papers(_guild.id, _channel.id, {
                                  arg: word_list[arg]})  # !!!!!!
         if not papers:
             await ctx.send("no result")
@@ -357,5 +370,5 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         await ctx.send("`test done`")
 
 
-def setup(bot):
+def setup(bot: commands.Bot):
     return bot.add_cog(ArxivCheckCog(bot))
