@@ -220,13 +220,10 @@ class ArxivCheckCog(commands.Cog, name="checker"):
         """
 
         for role_name in args:
-            result: bool
-            role: Optional[discord.Role]
-            result, role = db_delete(ctx.guild, role_name)
-            if result:
+            role: Optional[discord.Role] = db_delete(ctx.guild, role_name)
+            if role:
                 await ctx.send(f'{role_name} を削除しました')
-                if role:
-                    await role.delete()
+                await role.delete()
                 continue
             await ctx.send(f'{role_name} というワードは存在しません')
 

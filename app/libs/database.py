@@ -82,7 +82,7 @@ def db_update(guild_id: int, word: dict):
     conn.close()
 
 
-def db_delete(guild: discord.Guild, del_key: str) -> Union[tuple[Literal[False], None], tuple[Literal[True], Optional[discord.Role]]]:
+def db_delete(guild: discord.Guild, del_key: str) -> Optional[discord.Role]:
     """
     単語の削除を行う\n
     guild_id で検索して，word_list からJSONオブジェクトを一部消去\n
@@ -95,22 +95,18 @@ def db_delete(guild: discord.Guild, del_key: str) -> Union[tuple[Literal[False],
         FROM test_table
         WHERE guild_id = ?''', (guild.id,))
     json_obj = c.fetchone()
-    # 辞書型に戻す
-    json_obj: dict = eval(json_obj[0])
-    role_id: int
-    try:
+    json_obj: dict = eval(json_obj[0])  # 辞書型に戻す
+
+    role_id: int = -1  # 存在しないid
+    if del_key in json_obj:
         role_id = json_obj.pop(del_key)
-    except KeyError:
-        conn.close()
-        return False, None
     c.execute(
         '''UPDATE test_table
         SET wordlist = ?''', (str(json_obj),))
     conn.commit()
     conn.close()
-    role: Optional[discord.Role] = discord.utils.get(
-        guild.roles, id=role_id)
-    return True, role
+    role: Optional[discord.Role] = discord.utils.get(guild.roles, id=role_id)
+    return role
 
 
 def db_set(guild_id: int, channel_id: int):
