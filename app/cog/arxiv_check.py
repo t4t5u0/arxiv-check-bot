@@ -332,7 +332,7 @@ class ArxivCheckCog(commands.Cog, name="checker"):
                 # print(abst[:30])
                 p = Paper(
                     link=paper["pdf_url"],
-                    title=paper["title"].replace('\n', ' '),
+                    title=paper["title"].replace('\n', ''),
                     abst=abst,
                     j_abst=self.trans(abst),
                     # 1つ分を挿入する．全部挿入してたので全ロールをメンションしてた
